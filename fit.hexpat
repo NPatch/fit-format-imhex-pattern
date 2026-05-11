@@ -29,6 +29,22 @@ u8 header_without_crc = 12;
 u8 prefetched_header_size @ 0x00 [[hidden]]; 
 
 using Architecture;
+
+enum Architecture : u8
+{
+    LittleEndian = 0x0,
+    BigEndian = 0x1
+};
+
+fn ArchToEndian(Architecture a)
+{
+    if(a == Architecture::BigEndian)
+    {
+        return std::mem::Endian::Big;
+    }
+    return std::mem::Endian::Little;
+};
+
 using MsgNum;
 using FieldBaseTypeEnum;
 using FieldDefinition;
@@ -84,12 +100,6 @@ std::mem::Section scratch = std::mem::create_section("Scratch");
 DateTime scratch_time_created @ time_created_addr in scratch [[format("format_local_datetime")]];
 FixedHeader scratch_fix_header @ fixed_header_addr in scratch;
 FieldDefinition scratch_defs[256] @ defs_array_addr in scratch;
-
-enum Architecture : u8
-{
-    LittleEndian = 0x0,
-    BigEndian = 0x1
-};
 
 enum MsgNum : u16
 {
@@ -221,12 +231,12 @@ enum MsgNum : u16
     Invalid                        = 0xFFFF
 };
 
-
 struct FixedHeader
 {
     u8 reserved;
     Architecture architecture;
-    be MsgNum global_msg_num;
+    std::core::set_endian(ArchToEndian(architecture));
+    MsgNum global_msg_num;
     u8 field_num;
 };
 
@@ -1368,41 +1378,21 @@ struct ActivityField
     auto i = std::core::array_index();
     auto s = scratch_defs[i].size;
     auto p = $;
+    std::core::set_endian(ArchToEndian(scratch_fix_header.architecture));
     match (scratch_defs[i].field_definition_num) 
     {
         (ActivityFieldDefinitionType::Timestamp): {
-            if(scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le DateTime timestamp @ p [[format("format_datetime")]];
-            }
-            else
-            {
-                be DateTime timestamp @ p [[format("format_datetime")]];
-            }
+            DateTime timestamp @ p [[format("format_datetime")]];
             scratch_time_created = time_created;
             $ += s;
         }
         (ActivityFieldDefinitionType::TotalTimerTime): 
         {
-            if(scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 total_timer_time;
-            }
-            else
-            {
-                be u32 total_timer_time;
-            }
+            u32 total_timer_time;
         }
         (ActivityFieldDefinitionType::NumSessions): 
         {
-            if(scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 num_sessions;
-            }
-            else
-            {
-                be u16 num_sessions;
-            }
+            u16 num_sessions;
         }
         (ActivityFieldDefinitionType::Type): 
         {
@@ -1418,19 +1408,12 @@ struct ActivityField
         }
         (ActivityFieldDefinitionType::LocalTimestamp): 
         {
-            if(scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le LocalDateTime local_timestamp [[format("format_local_datetime")]];
-            }
-            else
-            {
-                be LocalDateTime local_timestamp [[format("format_local_datetime")]];
-            }
+            LocalDateTime local_timestamp [[format("format_local_datetime")]];
         }
         (ActivityFieldDefinitionType::EventGroup): 
         {
             u8 event_group;
-        }        
+        }
     }
 };
 
@@ -1480,6 +1463,8 @@ struct SessionField
     auto i = std::core::array_index();
     auto s = scratch_defs[i].size;
     auto p = $;
+
+    std::core::set_endian(ArchToEndian(scratch_fix_header.architecture));
     match (scratch_defs[i].field_definition_num) 
     {
         (SessionFieldDefinitionType::MessageIndex): 
@@ -1490,14 +1475,7 @@ struct SessionField
         
         (SessionFieldDefinitionType::Timestamp): 
         {
-            if(scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le DateTime timestamp @ p [[format("format_datetime")]];
-            }
-            else
-            {
-                be DateTime timestamp @ p [[format("format_datetime")]];
-            }
+            DateTime timestamp @ p [[format("format_datetime")]];
             $ += s;
         }
         
@@ -1513,40 +1491,19 @@ struct SessionField
         
         (SessionFieldDefinitionType::StartTime): 
         {
-            if(scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le DateTime start_time @ p;
-            }
-            else
-            {
-                be DateTime start_time @ p;
-            }            
+            DateTime start_time @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::StartPositionLat): 
         {
-            if(scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s32 start_position_lat @ p;
-            }
-            else
-            {
-                be s32 start_position_lat @ p;
-            }
+            be s32 start_position_lat @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::StartPositionLong): 
         {
-            if(scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s32 start_position_long @ p;
-            }
-            else
-            {
-                be s32 start_position_long @ p;
-            }
+            s32 start_position_long @ p;
             $ += s;
         }
         
@@ -1562,106 +1519,49 @@ struct SessionField
         
         (SessionFieldDefinitionType::TotalElapsedTime): 
         {
-            if(scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 total_elapsed_time @ p;
-            }
-            else
-            {
-                be u32 total_elapsed_time @ p;
-            }
-            
+            u32 total_elapsed_time @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::TotalTimerTime): 
         {
-            if(scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 total_timer_time @ p;
-            }
-            else
-            {
-                be u32 total_timer_time @ p;
-            }
+            u32 total_timer_time @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::TotalDistance): 
         {
-            if(scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 total_distance @ p;
-            }
-            else
-            {
-                be u32 total_distance @ p;
-            }
+            u32 total_distance @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::TotalCycles): 
         {
-            if(scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 total_cycles @ p;
-            }
-            else
-            {
-                be u32 total_cycles @ p;
-            }
+            u32 total_cycles @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::TotalCalories):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 total_calories @ p;
-            }
-            else
-            {
-                be u16 total_calories @ p;
-            }
+            u16 total_calories @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::TotalFatCalories):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 total_fat_calories @ p;
-            }
-            else
-            {
-                be u16 total_fat_calories @ p;
-            }
+            u16 total_fat_calories @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::AvgSpeed):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_speed @ p;
-            }
-            else
-            {
-                be u16 avg_speed @ p;
-            }
+            u16 avg_speed @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::MaxSpeed):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 max_speed @ p;
-            }
-            else
-            {
-                be u16 max_speed @ p;
-            }
+            u16 max_speed @ p;
             $ += s;
         }
         
@@ -1691,53 +1591,25 @@ struct SessionField
         
         (SessionFieldDefinitionType::AvgPower):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_power @ p;
-            }
-            else
-            {
-                be u16 avg_power @ p;
-            }
+            u16 avg_power @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::MaxPower):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 max_power @ p;
-            }
-            else
-            {
-                be u16 max_power @ p;
-            }
+            u16 max_power @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::TotalAscent):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 total_ascent @ p;
-            }
-            else
-            {
-                be u16 total_ascent @ p;
-            }
+            u16 total_ascent @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::TotalDescent):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 total_descent @ p;
-            }
-            else
-            {
-                be u16 total_descent @ p;
-            }
+            u16 total_descent @ p;
             $ += s;
         }
         
@@ -1749,27 +1621,13 @@ struct SessionField
         
         (SessionFieldDefinitionType::FirstLapIndex):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 first_lap_index @ p;
-            }
-            else
-            {
-                be u16 first_lap_index @ p;
-            }
+            u16 first_lap_index @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::NumLaps):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 num_laps @ p;
-            }
-            else
-            {
-                be u16 num_laps @ p;
-            }
+            u16 num_laps @ p;
             $ += s;
         }
         
@@ -1787,170 +1645,79 @@ struct SessionField
         
         (SessionFieldDefinitionType::NecLat):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s32 nec_lat @ p;
-            }
-            else
-            {
-                be s32 nec_lat @ p;
-            }
+            s32 nec_lat @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::NecLong):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s32 nec_long @ p;
-            }
-            else
-            {
-                be s32 nec_long @ p;
-            }
+            s32 nec_long @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::SwcLat):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s32 swc_lat @ p;
-            }
-            else
-            {
-                be s32 swc_lat @ p;
-            }
+            s32 swc_lat @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::SwcLong):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s32 swc_long @ p;
-            }
-            else
-            {
-                be s32 swc_long @ p;
-            }
+            s32 swc_long @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::NumLengths):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 num_lengths @ p;
-            }
-            else
-            {
-                be u16 num_lengths @ p;
-            }
+            u16 num_lengths @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::NormalizedPower):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 normalized_power @ p;
-            }
-            else
-            {
-                be u16 normalized_power @ p;
-            }
+            u16 normalized_power @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::TrainingStressScore):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 training_stress_score @ p;
-            }
-            else
-            {
-                be u16 training_stress_score @ p;
-            }
+            u16 training_stress_score @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::IntensityFactor):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 intensity_factor @ p;
-            }
-            else
-            {
-                be u16 intensity_factor @ p;
-            }
+            u16 intensity_factor @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::LeftRightBalance):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le LeftRightBalance100Type left_right_balance @ p;
-            }
-            else
-            {
-                be LeftRightBalance100Type left_right_balance @ p;
-            }
+            LeftRightBalance100Type left_right_balance @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::EndPositionLat):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s32 end_position_lat @ p;
-            }
-            else
-            {
-                be s32 end_position_lat @ p;
-            }
+            s32 end_position_lat @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::EndPositionLong):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s32 end_position_long @ p;
-            }
-            else
-            {
-                be s32 end_position_long @ p;
-            }
+            s32 end_position_long @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::AvgStrokeCount):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 avg_stroke_count @ p;
-            }
-            else
-            {
-                be u32 avg_stroke_count @ p;
-            }
+            u32 avg_stroke_count @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::AvgStrokeDistance):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_stroke_distance @ p;
-            }
-            else
-            {
-                be u16 avg_stroke_distance @ p;
-            }
+            u16 avg_stroke_distance @ p;
             $ += s;
         }
         
@@ -1962,79 +1729,37 @@ struct SessionField
         
         (SessionFieldDefinitionType::PoolLength):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 pool_length @ p;
-            }
-            else
-            {
-                be u16 pool_length @ p;
-            }
+            u16 pool_length @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::ThresholdPower):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 threshold_power @ p;
-            }
-            else
-            {
-                be u16 threshold_power @ p;
-            }
+            u16 threshold_power @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::NumActiveLengths):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 num_active_lengths @ p;
-            }
-            else
-            {
-                be u16 num_active_lengths @ p;
-            }
+            u16 num_active_lengths @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::TotalWork):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 total_work @ p;
-            }
-            else
-            {
-                be u32 total_work @ p;
-            }
+            u32 total_work @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::AvgAltitude):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_altitude @ p;
-            }
-            else
-            {
-                be u16 avg_altitude @ p;
-            }
+            u16 avg_altitude @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::MaxAltitude):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 max_altitude @ p;
-            }
-            else
-            {
-                be u16 max_altitude @ p;
-            }
+            u16 max_altitude @ p;
             $ += s;
         }
         
@@ -2046,66 +1771,31 @@ struct SessionField
         
         (SessionFieldDefinitionType::AvgGrade):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s16 avg_grade @ p;
-            }
-            else
-            {
-                be s16 avg_grade @ p;
-            }
+            s16 avg_grade @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::AvgPosGrade):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s16 avg_pos_grade @ p;
-            }
-            else
-            {
-                be s16 avg_pos_grade @ p;
-            }
+            s16 avg_pos_grade @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::AvgNegGrade):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s16 avg_neg_grade @ p;
-            }
-            else
-            {
-                be s16 avg_neg_grade @ p;
-            }
+            s16 avg_neg_grade @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::MaxPosGrade):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s16 max_pos_grade @ p;
-            }
-            else
-            {
-                be s16 max_pos_grade @ p;
-            }
+            s16 max_pos_grade @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::MaxNegGrade):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s16 max_neg_grade @ p;
-            }
-            else
-            {
-                be s16 max_neg_grade @ p;
-            }
+            s16 max_neg_grade @ p;
             $ += s;
         }
         
@@ -2123,66 +1813,31 @@ struct SessionField
         
         (SessionFieldDefinitionType::TotalMovingTime):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 total_moving_time @ p;
-            }
-            else
-            {
-                be u32 total_moving_time @ p;
-            }
+            u32 total_moving_time @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::AvgPosVerticalSpeed):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s16 avg_pos_vertical_speed @ p;
-            }
-            else
-            {
-                be s16 avg_pos_vertical_speed @ p;
-            }
+            s16 avg_pos_vertical_speed @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::AvgNegVerticalSpeed):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s16 avg_neg_vertical_speed @ p;
-            }
-            else
-            {
-                be s16 avg_neg_vertical_speed @ p;
-            }
+            s16 avg_neg_vertical_speed @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::MaxPosVerticalSpeed):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s16 max_pos_vertical_speed @ p;
-            }
-            else
-            {
-                be s16 max_pos_vertical_speed @ p;
-            }
+            s16 max_pos_vertical_speed @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::MaxNegVerticalSpeed):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s16 max_neg_vertical_speed @ p;
-            }
-            else
-            {
-                be s16 max_neg_vertical_speed @ p;
-            }
+            s16 max_neg_vertical_speed @ p;
             $ += s;
         }
         
@@ -2194,118 +1849,55 @@ struct SessionField
         
         (SessionFieldDefinitionType::TimeInHrZone):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 time_in_hr_zone @ p;
-            }
-            else
-            {
-                be u32 time_in_hr_zone @ p;
-            }
+            u32 time_in_hr_zone @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::TimeInSpeedZone):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 time_in_speed_zone @ p;
-            }
-            else
-            {
-                be u32 time_in_speed_zone @ p;
-            }
+            u32 time_in_speed_zone @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::TimeInCadenceZone):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 time_in_cadence_zone @ p;
-            }
-            else
-            {
-                be u32 time_in_cadence_zone @ p;
-            }
+            u32 time_in_cadence_zone @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::TimeInPowerZone):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 time_in_power_zone @ p;
-            }
-            else
-            {
-                be u32 time_in_power_zone @ p;
-            }
+            u32 time_in_power_zone @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::AvgLapTime):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 avg_lap_time @ p;
-            }
-            else
-            {
-                be u32 avg_lap_time @ p;
-            }
+            u32 avg_lap_time @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::BestLapIndex):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 best_lap_index @ p;
-            }
-            else
-            {
-                be u16 best_lap_index @ p;
-            }
+            u16 best_lap_index @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::MinAltitude):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 min_altitude @ p;
-            }
-            else
-            {
-                be u16 min_altitude @ p;
-            }
+            u16 min_altitude @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::PlayerScore):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 player_score @ p;
-            }
-            else
-            {
-                be u16 player_score @ p;
-            }
+            u16 player_score @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::OpponentScore):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 opponent_score @ p;
-            }
-            else
-            {
-                be u16 opponent_score @ p;
-            }
+            u16 opponent_score @ p;
             $ += s;
         }
         
@@ -2317,92 +1909,43 @@ struct SessionField
         
         (SessionFieldDefinitionType::StrokeCount):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 stroke_count @ p;
-            }
-            else
-            {
-                be u16 stroke_count @ p;
-            }
+            u16 stroke_count @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::ZoneCount):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 zone_count @ p;
-            }
-            else
-            {
-                be u16 zone_count @ p;
-            }
+            u16 zone_count @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::MaxBallSpeed):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 max_ball_speed @ p;
-            }
-            else
-            {
-                be u16 max_ball_speed @ p;
-            }
+            u16 max_ball_speed @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::AvgBallSpeed):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_ball_speed @ p;
-            }
-            else
-            {
-                be u16 avg_ball_speed @ p;
-            }
+            u16 avg_ball_speed @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::AvgVerticalOscillation):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_vertical_oscillation @ p;
-            }
-            else
-            {
-                be u16 avg_vertical_oscillation @ p;
-            }
+            u16 avg_vertical_oscillation @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::AvgStanceTimePercent):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_stance_time_percent @ p;
-            }
-            else
-            {
-                be u16 avg_stance_time_percent @ p;
-            }
+            u16 avg_stance_time_percent @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::AvgStanceTime):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_stance_time @ p;
-            }
-            else
-            {
-                be u16 avg_stance_time @ p;
-            }
+            u16 avg_stance_time @ p;
             $ += s;
         }
         
@@ -2426,79 +1969,37 @@ struct SessionField
         
         (SessionFieldDefinitionType::AvgTotalHemoglobinConc):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_total_hemoglobin_conc @ p;
-            }
-            else
-            {
-                be u16 avg_total_hemoglobin_conc @ p;
-            }
+            u16 avg_total_hemoglobin_conc @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::MinTotalHemoglobinConc):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 min_total_hemoglobin_conc @ p;
-            }
-            else
-            {
-                be u16 min_total_hemoglobin_conc @ p;
-            }
+            u16 min_total_hemoglobin_conc @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::MaxTotalHemoglobinConc):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 max_total_hemoglobin_conc @ p;
-            }
-            else
-            {
-                be u16 max_total_hemoglobin_conc @ p;
-            }
+            u16 max_total_hemoglobin_conc @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::AvgSaturatedHemoglobinPercent):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_saturated_hemoglobin_percent @ p;
-            }
-            else
-            {
-                be u16 avg_saturated_hemoglobin_percent @ p;
-            }
+            u16 avg_saturated_hemoglobin_percent @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::MinSaturatedHemoglobinPercent):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 min_saturated_hemoglobin_percent @ p;
-            }
-            else
-            {
-                be u16 min_saturated_hemoglobin_percent @ p;
-            }
+            u16 min_saturated_hemoglobin_percent @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::MaxSaturatedHemoglobinPercent):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 max_saturated_hemoglobin_percent @ p;
-            }
-            else
-            {
-                be u16 max_saturated_hemoglobin_percent @ p;
-            }
+            u16 max_saturated_hemoglobin_percent @ p;
             $ += s;
         }
         
@@ -2546,27 +2047,13 @@ struct SessionField
         
         (SessionFieldDefinitionType::TimeStanding):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 time_standing @ p;
-            }
-            else
-            {
-                be u32 time_standing @ p;
-            }
+            u32 time_standing @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::StandCount):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 stand_count @ p;
-            }
-            else
-            {
-                be u16 stand_count @ p;
-            }
+            u16 stand_count @ p;
             $ += s;
         }
         
@@ -2608,27 +2095,13 @@ struct SessionField
         
         (SessionFieldDefinitionType::AvgPowerPosition):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_power_position @ p;
-            }
-            else
-            {
-                be u16 avg_power_position @ p;
-            }
+            u16 avg_power_position @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::MaxPowerPosition):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 max_power_position @ p;
-            }
-            else
-            {
-                be u16 max_power_position @ p;
-            }
+            u16 max_power_position @ p;
             $ += s;
         }
         
@@ -2646,92 +2119,43 @@ struct SessionField
         
         (SessionFieldDefinitionType::EnhancedAvgSpeed):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 enhanced_avg_speed @ p;
-            }
-            else
-            {
-                be u32 enhanced_avg_speed @ p;
-            }
+            u32 enhanced_avg_speed @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::EnhancedMaxSpeed):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 enhanced_max_speed @ p;
-            }
-            else
-            {
-                be u32 enhanced_max_speed @ p;
-            }
+            u32 enhanced_max_speed @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::EnhancedAvgAltitude):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 enhanced_avg_altitude @ p;
-            }
-            else
-            {
-                be u32 enhanced_avg_altitude @ p;
-            }
+            u32 enhanced_avg_altitude @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::EnhancedMinAltitude):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 enhanced_min_altitude @ p;
-            }
-            else
-            {
-                be u32 enhanced_min_altitude @ p;
-            }
+            u32 enhanced_min_altitude @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::EnhancedMaxAltitude):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 enhanced_max_altitude @ p;
-            }
-            else
-            {
-                be u32 enhanced_max_altitude @ p;
-            }
+            u32 enhanced_max_altitude @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::AvgLevMotorPower):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_lev_motor_power @ p;
-            }
-            else
-            {
-                be u16 avg_lev_motor_power @ p;
-            }
+            u16 avg_lev_motor_power @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::MaxLevMotorPower):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 max_lev_motor_power @ p;
-            }
-            else
-            {
-                be u16 max_lev_motor_power @ p;
-            }
+            u16 max_lev_motor_power @ p;
             $ += s;
         }
         
@@ -2743,40 +2167,19 @@ struct SessionField
         
         (SessionFieldDefinitionType::AvgVerticalRatio):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_vertical_ratio @ p;
-            }
-            else
-            {
-                be u16 avg_vertical_ratio @ p;
-            }
+            u16 avg_vertical_ratio @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::AvgStanceTimeBalance):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_stance_time_balance @ p;
-            }
-            else
-            {
-                be u16 avg_stance_time_balance @ p;
-            }
+            u16 avg_stance_time_balance @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::AvgStepLength):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_step_length @ p;
-            }
-            else
-            {
-                be u16 avg_step_length @ p;
-            }
+            u16 avg_step_length @ p;
             $ += s;
         }
         
@@ -2788,53 +2191,25 @@ struct SessionField
         
         (SessionFieldDefinitionType::AvgVam):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_vam @ p;
-            }
-            else
-            {
-                be u16 avg_vam @ p;
-            }
+            u16 avg_vam @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::AvgDepth):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 avg_depth @ p;
-            }
-            else
-            {
-                be u32 avg_depth @ p;
-            }
+            u32 avg_depth @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::MaxDepth):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 max_depth @ p;
-            }
-            else
-            {
-                be u32 max_depth @ p;
-            }
+            u32 max_depth @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::SurfaceInterval):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 surface_interval @ p;
-            }
-            else
-            {
-                be u32 surface_interval @ p;
-            }
+            u32 surface_interval @ p;
             $ += s;
         }
         
@@ -2852,27 +2227,13 @@ struct SessionField
         
         (SessionFieldDefinitionType::StartN2):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 start_n2 @ p;
-            }
-            else
-            {
-                be u16 start_n2 @ p;
-            }
+            u16 start_n2 @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::EndN2):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 end_n2 @ p;
-            }
-            else
-            {
-                be u16 end_n2 @ p;
-            }
+            u16 end_n2 @ p;
             $ += s;
         }
         
@@ -2902,144 +2263,67 @@ struct SessionField
         
         (SessionFieldDefinitionType::O2Toxicity):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 o2_toxicity @ p;
-            }
-            else
-            {
-                be u16 o2_toxicity @ p;
-            }
+            u16 o2_toxicity @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::DiveNumber):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 dive_number @ p;
-            }
-            else
-            {
-                be u32 dive_number @ p;
-            }
+            u32 dive_number @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::TrainingLoadPeak):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s32 training_load_peak @ p;
-            }
-            else
-            {
-                be s32 training_load_peak @ p;
-            }
+            s32 training_load_peak @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::EnhancedAvgRespirationRate):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 enhanced_avg_respiration_rate @ p;
-            }
-            else
-            {
-                be u16 enhanced_avg_respiration_rate @ p;
-            }
+            u16 enhanced_avg_respiration_rate @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::EnhancedMaxRespirationRate):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 enhanced_max_respiration_rate @ p;
-            }
-            else
-            {
-                be u16 enhanced_max_respiration_rate @ p;
-            }
+            u16 enhanced_max_respiration_rate @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::EnhancedMinRespirationRate):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 enhanced_min_respiration_rate @ p;
-            }
-            else
-            {
-                be u16 enhanced_min_respiration_rate @ p;
-            }
+            u16 enhanced_min_respiration_rate @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::TotalGrit):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le float total_grit @ p;
-            }
-            else
-            {
-                be float total_grit @ p;
-            }
+            float total_grit @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::TotalFlow):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le float total_flow @ p;
-            }
-            else
-            {
-                be float total_flow @ p;
-            }
+            float total_flow @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::JumpCount):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 jump_count @ p;
-            }
-            else
-            {
-                be u16 jump_count @ p;
-            }
+            u16 jump_count @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::AvgGrit):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le float avg_grit @ p;
-            }
-            else
-            {
-                be float avg_grit @ p;
-            }
+            float avg_grit @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::AvgFlow):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le float avg_flow @ p;
-            }
-            else
-            {
-                be float avg_flow @ p;
-            }
+            float avg_flow @ p;
             $ += s;
         }
         
@@ -3069,14 +2353,7 @@ struct SessionField
         
         (SessionFieldDefinitionType::MetabolicCalories):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 metabolic_calories @ p;
-            }
-            else
-            {
-                be u16 metabolic_calories @ p;
-            }
+            u16 metabolic_calories @ p;
             $ += s;
         }
         
@@ -3106,40 +2383,19 @@ struct SessionField
         
         (SessionFieldDefinitionType::AvgCoreTemperature):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_core_temperature @ p;
-            }
-            else
-            {
-                be u16 avg_core_temperature @ p;
-            }
+            u16 avg_core_temperature @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::MinCoreTemperature):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 min_core_temperature @ p;
-            }
-            else
-            {
-                be u16 min_core_temperature @ p;
-            }
+            u16 min_core_temperature @ p;
             $ += s;
         }
         
         (SessionFieldDefinitionType::MaxCoreTemperature):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 max_core_temperature @ p;
-            }
-            else
-            {
-                be u16 max_core_temperature @ p;
-            }
+            u16 max_core_temperature @ p;
             $ += s;
         }
     }
@@ -3150,6 +2406,8 @@ struct LapField
     auto i = std::core::array_index();
     auto s = scratch_defs[i].size;
     auto p = $;
+
+    std::core::set_endian(ArchToEndian(scratch_fix_header.architecture));
     match (scratch_defs[i].field_definition_num) 
     {
         (LapFieldDefinitionType::Event):
@@ -3164,158 +2422,67 @@ struct LapField
         }
         (LapFieldDefinitionType::StartTime):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le DateTime start_time @ p[[format("format_datetime")]];
-            }
-            else
-            {
-                be DateTime start_time @ p[[format("format_datetime")]];
-            }
+            DateTime start_time @ p[[format("format_datetime")]];
             $ += s;
         }
         (LapFieldDefinitionType::StartPositionLat):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s32 start_position_lat @ p;
-            }
-            else
-            {
-                be s32 start_position_lat @ p;
-            }
+            s32 start_position_lat @ p;
             $ += s;
         }
         (LapFieldDefinitionType::StartPositionLong):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s32 start_position_long @ p;
-            }
-            else
-            {
-                be s32 start_position_long @ p;
-            }
+            s32 start_position_long @ p;
             $ += s;
         }
         (LapFieldDefinitionType::EndPositionLat):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s32 end_position_lat @ p;
-            }
-            else
-            {
-                be s32 end_position_lat @ p;
-            }
+            s32 end_position_lat @ p;
             $ += s;
         }
         (LapFieldDefinitionType::EndPositionLong):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s32 end_position_long @ p;
-            }
-            else
-            {
-                be s32 end_position_long @ p;
-            }
+            s32 end_position_long @ p;
             $ += s;
         }
         (LapFieldDefinitionType::TotalElapsedTime):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 total_elapsed_time @ p;
-            }
-            else
-            {
-                be u32 total_elapsed_time @ p;
-            }
+            u32 total_elapsed_time @ p;
             $ += s;
         }
         (LapFieldDefinitionType::TotalTimerTime):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 total_timer_time @ p;
-            }
-            else
-            {
-                be u32 total_timer_time @ p;
-            }
+            u32 total_timer_time @ p;
             $ += s;
         }
         (LapFieldDefinitionType::TotalDistance):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 total_distance @ p;
-            }
-            else
-            {
-                be u32 total_distance @ p;
-            }
+            u32 total_distance @ p;
             $ += s;
         }
         (LapFieldDefinitionType::TotalCycles):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 total_cycles @ p;
-            }
-            else
-            {
-                be u32 total_cycles @ p;
-            }
+            u32 total_cycles @ p;
             $ += s;
         }
         (LapFieldDefinitionType::TotalCalories):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 total_calories @ p;
-            }
-            else
-            {
-                be u16 total_calories @ p;
-            }
+            u16 total_calories @ p;
             $ += s;
         }
         (LapFieldDefinitionType::TotalFatCalories):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 total_fat_calories @ p;
-            }
-            else
-            {
-                be u16 total_fat_calories @ p;
-            }
+            u16 total_fat_calories @ p;
             $ += s;
         }
         (LapFieldDefinitionType::AvgSpeed):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_speed @ p;
-            }
-            else
-            {
-                be u16 avg_speed @ p;
-            }
+            u16 avg_speed @ p;
             $ += s;
         }
         (LapFieldDefinitionType::MaxSpeed):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 max_speed @ p;
-            }
-            else
-            {
-                be u16 max_speed @ p;
-            }
+            u16 max_speed @ p;
             $ += s;
         }
         (LapFieldDefinitionType::AvgHeartRate):
@@ -3340,50 +2507,22 @@ struct LapField
         }
         (LapFieldDefinitionType::AvgPower):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_power @ p;
-            }
-            else
-            {
-                be u16 avg_power @ p;
-            }
+            u16 avg_power @ p;
             $ += s;
         }
         (LapFieldDefinitionType::MaxPower):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 max_power @ p;
-            }
-            else
-            {
-                be u16 max_power @ p;
-            }
+            u16 max_power @ p;
             $ += s;
         }
         (LapFieldDefinitionType::TotalAscent):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 total_ascent @ p;
-            }
-            else
-            {
-                be u16 total_ascent @ p;
-            }
+            u16 total_ascent @ p;
             $ += s;
         }
         (LapFieldDefinitionType::TotalDescent):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 total_descent @ p;
-            }
-            else
-            {
-                be u16 total_descent @ p;
-            }
+            u16 total_descent @ p;
             $ += s;
         }
         (LapFieldDefinitionType::Intensity):
@@ -3408,62 +2547,27 @@ struct LapField
         }
         (LapFieldDefinitionType::NumLengths):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 num_lengths @ p;
-            }
-            else
-            {
-                be u16 num_lengths @ p;
-            }
+            u16 num_lengths @ p;
             $ += s;
         }
         (LapFieldDefinitionType::NormalizedPower):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 normalized_power @ p;
-            }
-            else
-            {
-                be u16 normalized_power @ p;
-            }
+            u16 normalized_power @ p;
             $ += s;
         }
         (LapFieldDefinitionType::LeftRightBalance):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le LeftRightBalance100Type left_right_balance @ p;
-            }
-            else
-            {
-                be LeftRightBalance100Type left_right_balance @ p;
-            }
+            LeftRightBalance100Type left_right_balance @ p;
             $ += s;
         }
         (LapFieldDefinitionType::FirstLengthIndex):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 first_length_index @ p;
-            }
-            else
-            {
-                be u16 first_length_index @ p;
-            }
+            u16 first_length_index @ p;
             $ += s;
         }
         (LapFieldDefinitionType::AvgStrokeDistance):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_stroke_distance @ p;
-            }
-            else
-            {
-                be u16 avg_stroke_distance @ p;
-            }
+            u16 avg_stroke_distance @ p;
             $ += s;
         }
         (LapFieldDefinitionType::SwimStroke):
@@ -3478,50 +2582,22 @@ struct LapField
         }
         (LapFieldDefinitionType::NumActiveLengths):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 num_active_lengths @ p;
-            }
-            else
-            {
-                be u16 num_active_lengths @ p;
-            }
+            u16 num_active_lengths @ p;
             $ += s;
         }
         (LapFieldDefinitionType::TotalWork):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 total_work @ p;
-            }
-            else
-            {
-                be u32 total_work @ p;
-            }
+            u32 total_work @ p;
             $ += s;
         }
         (LapFieldDefinitionType::AvgAltitude):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_altitude @ p;
-            }
-            else
-            {
-                be u16 avg_altitude @ p;
-            }
+            u16 avg_altitude @ p;
             $ += s;
         }
         (LapFieldDefinitionType::MaxAltitude):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 max_altitude @ p;
-            }
-            else
-            {
-                be u16 max_altitude @ p;
-            }
+            u16 max_altitude @ p;
             $ += s;
         }
         (LapFieldDefinitionType::GpsAccuracy):
@@ -3531,62 +2607,27 @@ struct LapField
         }
         (LapFieldDefinitionType::AvgGrade):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s16 avg_grade @ p;
-            }
-            else
-            {
-                be s16 avg_grade @ p;
-            }
+            s16 avg_grade @ p;
             $ += s;
         }
         (LapFieldDefinitionType::AvgPosGrade):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s16 avg_pos_grade @ p;
-            }
-            else
-            {
-                be s16 avg_pos_grade @ p;
-            }
+            s16 avg_pos_grade @ p;
             $ += s;
         }
         (LapFieldDefinitionType::AvgNegGrade):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s16 avg_neg_grade @ p;
-            }
-            else
-            {
-                be s16 avg_neg_grade @ p;
-            }
+            s16 avg_neg_grade @ p;
             $ += s;
         }
         (LapFieldDefinitionType::MaxPosGrade):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s16 max_pos_grade @ p;
-            }
-            else
-            {
-                be s16 max_pos_grade @ p;
-            }
+            s16 max_pos_grade @ p;
             $ += s;
         }
         (LapFieldDefinitionType::MaxNegGrade):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s16 max_neg_grade @ p;
-            }
-            else
-            {
-                be s16 max_neg_grade @ p;
-            }
+            s16 max_neg_grade @ p;
             $ += s;
         }
         (LapFieldDefinitionType::AvgTemperature):
@@ -3601,134 +2642,57 @@ struct LapField
         }
         (LapFieldDefinitionType::TotalMovingTime):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 total_moving_time @ p;
-            }
-            else
-            {
-                be u32 total_moving_time @ p;
-            }
+            u32 total_moving_time @ p;
             $ += s;
         }
         (LapFieldDefinitionType::AvgPosVerticalSpeed):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s16 avg_pos_vertical_speed @ p;
-            }
-            else
-            {
-                be s16 avg_pos_vertical_speed @ p;
-            }
+            s16 avg_pos_vertical_speed @ p;
             $ += s;
         }
         (LapFieldDefinitionType::AvgNegVerticalSpeed):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s16 avg_neg_vertical_speed @ p;
-            }
-            else
-            {
-                be s16 avg_neg_vertical_speed @ p;
-            }
+            s16 avg_neg_vertical_speed @ p;
             $ += s;
         }
         (LapFieldDefinitionType::MaxPosVerticalSpeed):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s16 max_pos_vertical_speed @ p;
-            }
-            else
-            {
-                be s16 max_pos_vertical_speed @ p;
-            }
+            s16 max_pos_vertical_speed @ p;
             $ += s;
         }
         (LapFieldDefinitionType::MaxNegVerticalSpeed):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s16 max_neg_vertical_speed @ p;
-            }
-            else
-            {
-                be s16 max_neg_vertical_speed @ p;
-            }
+            s16 max_neg_vertical_speed @ p;
             $ += s;
         }
         (LapFieldDefinitionType::TimeInHrZone):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 time_in_hr_zone @ p;
-            }
-            else
-            {
-                be u32 time_in_hr_zone @ p;
-            }
+            u32 time_in_hr_zone @ p;
             $ += s;
         }
         (LapFieldDefinitionType::TimeInSpeedZone):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 time_in_speed_zone @ p;
-            }
-            else
-            {
-                be u32 time_in_speed_zone @ p;
-            }
+            u32 time_in_speed_zone @ p;
             $ += s;
         }
         (LapFieldDefinitionType::TimeInCadenceZone):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 time_in_cadence_zone @ p;
-            }
-            else
-            {
-                be u32 time_in_cadence_zone @ p;
-            }
+            u32 time_in_cadence_zone @ p;
             $ += s;
         }
         (LapFieldDefinitionType::TimeInPowerZone):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 time_in_power_zone @ p;
-            }
-            else
-            {
-                be u32 time_in_power_zone @ p;
-            }
+            u32 time_in_power_zone @ p;
             $ += s;
         }
         (LapFieldDefinitionType::RepetitionNum):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 repetition_num @ p;
-            }
-            else
-            {
-                be u16 repetition_num @ p;
-            }
+            u16 repetition_num @ p;
             $ += s;
         }
         (LapFieldDefinitionType::MinAltitude):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 min_altitude @ p;
-            }
-            else
-            {
-                be u16 min_altitude @ p;
-            }
+            u16 min_altitude @ p;
             $ += s;
         }
         (LapFieldDefinitionType::MinHeartRate):
@@ -3743,74 +2707,32 @@ struct LapField
         }
         (LapFieldDefinitionType::OpponentScore):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 opponent_score @ p;
-            }
-            else
-            {
-                be u16 opponent_score @ p;
-            }
+            u16 opponent_score @ p;
             $ += s;
         }
         (LapFieldDefinitionType::StrokeCount):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 stroke_count @ p;
-            }
-            else
-            {
-                be u16 stroke_count @ p;
-            }
+            u16 stroke_count @ p;
             $ += s;
         }
         (LapFieldDefinitionType::ZoneCount):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 zone_count @ p;
-            }
-            else
-            {
-                be u16 zone_count @ p;
-            }
+            u16 zone_count @ p;
             $ += s;
         }
         (LapFieldDefinitionType::AvgVerticalOscillation):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_vertical_oscillation @ p;
-            }
-            else
-            {
-                be u16 avg_vertical_oscillation @ p;
-            }
+            u16 avg_vertical_oscillation @ p;
             $ += s;
         }
         (LapFieldDefinitionType::AvgStanceTimePercent):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_stance_time_percent @ p;
-            }
-            else
-            {
-                be u16 avg_stance_time_percent @ p;
-            }
+            u16 avg_stance_time_percent @ p;
             $ += s;
         }
         (LapFieldDefinitionType::AvgStanceTime):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_stance_time @ p;
-            }
-            else
-            {
-                be u16 avg_stance_time @ p;
-            }
+            u16 avg_stance_time @ p;
             $ += s;
         }
         (LapFieldDefinitionType::AvgFractionalCadence):
@@ -3830,86 +2752,37 @@ struct LapField
         }
         (LapFieldDefinitionType::PlayerScore):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 player_score @ p;
-            }
-            else
-            {
-                be u16 player_score @ p;
-            }
+            u16 player_score @ p;
             $ += s;
         }
         (LapFieldDefinitionType::AvgTotalHemoglobinConc):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_total_hemoglobin_conc @ p;
-            }
-            else
-            {
-                be u16 avg_total_hemoglobin_conc @ p;
-            }
+            u16 avg_total_hemoglobin_conc @ p;
             $ += s;
         }
         (LapFieldDefinitionType::MinTotalHemoglobinConc):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 min_total_hemoglobin_conc @ p;
-            }
-            else
-            {
-                be u16 min_total_hemoglobin_conc @ p;
-            }
+            u16 min_total_hemoglobin_conc @ p;
             $ += s;
         }
         (LapFieldDefinitionType::MaxTotalHemoglobinConc):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 max_total_hemoglobin_conc @ p;
-            }
-            else
-            {
-                be u16 max_total_hemoglobin_conc @ p;
-            }
+            u16 max_total_hemoglobin_conc @ p;
             $ += s;
         }
         (LapFieldDefinitionType::AvgSaturatedHemoglobinPercent):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_saturated_hemoglobin_percent @ p;
-            }
-            else
-            {
-                be u16 avg_saturated_hemoglobin_percent @ p;
-            }
+            u16 avg_saturated_hemoglobin_percent @ p;
             $ += s;
         }
         (LapFieldDefinitionType::MinSaturatedHemoglobinPercent):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 min_saturated_hemoglobin_percent @ p;
-            }
-            else
-            {
-                be u16 min_saturated_hemoglobin_percent @ p;
-            }
+            u16 min_saturated_hemoglobin_percent @ p;
             $ += s;
         }
         (LapFieldDefinitionType::MaxSaturatedHemoglobinPercent):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 max_saturated_hemoglobin_percent @ p;
-            }
-            else
-            {
-                be u16 max_saturated_hemoglobin_percent @ p;
-            }
+            u16 max_saturated_hemoglobin_percent @ p;
             $ += s;
         }
         (LapFieldDefinitionType::AvgLeftTorqueEffectiveness):
@@ -3939,26 +2812,12 @@ struct LapField
         }
         (LapFieldDefinitionType::TimeStanding):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 time_standing @ p;
-            }
-            else
-            {
-                be u32 time_standing @ p;
-            }
+            u32 time_standing @ p;
             $ += s;
         }
         (LapFieldDefinitionType::StandCount):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 stand_count @ p;
-            }
-            else
-            {
-                be u16 stand_count @ p;
-            }
+            u16 stand_count @ p;
             $ += s;
         }
         (LapFieldDefinitionType::AvgLeftPco):
@@ -3993,26 +2852,12 @@ struct LapField
         }
         (LapFieldDefinitionType::AvgPowerPosition):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_power_position @ p;
-            }
-            else
-            {
-                be u16 avg_power_position @ p;
-            }
+            u16 avg_power_position @ p;
             $ += s;
         }
         (LapFieldDefinitionType::MaxPowerPosition):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 max_power_position @ p;
-            }
-            else
-            {
-                be u16 max_power_position @ p;
-            }
+            u16 max_power_position @ p;
             $ += s;
         }
         (LapFieldDefinitionType::AvgCadencePosition):
@@ -4027,86 +2872,37 @@ struct LapField
         }
         (LapFieldDefinitionType::EnhancedAvgSpeed):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 enhanced_avg_speed @ p;
-            }
-            else
-            {
-                be u32 enhanced_avg_speed @ p;
-            }
+            u32 enhanced_avg_speed @ p;
             $ += s;
         }
         (LapFieldDefinitionType::EnhancedMaxSpeed):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 enhanced_max_speed @ p;
-            }
-            else
-            {
-                be u32 enhanced_max_speed @ p;
-            }
+            u32 enhanced_max_speed @ p;
             $ += s;
         }
         (LapFieldDefinitionType::EnhancedAvgAltitude):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 enhanced_avg_altitude @ p;
-            }
-            else
-            {
-                be u32 enhanced_avg_altitude @ p;
-            }
+            u32 enhanced_avg_altitude @ p;
             $ += s;
         }
         (LapFieldDefinitionType::EnhancedMinAltitude):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 enhanced_min_altitude @ p;
-            }
-            else
-            {
-                be u32 enhanced_min_altitude @ p;
-            }
+            u32 enhanced_min_altitude @ p;
             $ += s;
         }
         (LapFieldDefinitionType::EnhancedMaxAltitude):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 enhanced_max_altitude @ p;
-            }
-            else
-            {
-                be u32 enhanced_max_altitude @ p;
-            }
+            u32 enhanced_max_altitude @ p;
             $ += s;
         }
         (LapFieldDefinitionType::AvgLevMotorPower):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_lev_motor_power @ p;
-            }
-            else
-            {
-                be u16 avg_lev_motor_power @ p;
-            }
+            u16 avg_lev_motor_power @ p;
             $ += s;
         }
         (LapFieldDefinitionType::MaxLevMotorPower):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 max_lev_motor_power @ p;
-            }
-            else
-            {
-                be u16 max_lev_motor_power @ p;
-            }
+            u16 max_lev_motor_power @ p;
             $ += s;
         }
         (LapFieldDefinitionType::LevBatteryConsumption):
@@ -4116,74 +2912,32 @@ struct LapField
         }
         (LapFieldDefinitionType::AvgVerticalRatio):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_vertical_ratio @ p;
-            }
-            else
-            {
-                be u16 avg_vertical_ratio @ p;
-            }
+            u16 avg_vertical_ratio @ p;
             $ += s;
         }
         (LapFieldDefinitionType::AvgStanceTimeBalance):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_stance_time_balance @ p;
-            }
-            else
-            {
-                be u16 avg_stance_time_balance @ p;
-            }
+            u16 avg_stance_time_balance @ p;
             $ += s;
         }
         (LapFieldDefinitionType::AvgStepLength):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_step_length @ p;
-            }
-            else
-            {
-                be u16 avg_step_length @ p;
-            }
+            u16 avg_step_length @ p;
             $ += s;
         }
         (LapFieldDefinitionType::AvgVam):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_vam @ p;
-            }
-            else
-            {
-                be u16 avg_vam @ p;
-            }
+            u16 avg_vam @ p;
             $ += s;
         }
         (LapFieldDefinitionType::AvgDepth):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 avg_depth @ p;
-            }
-            else
-            {
-                be u32 avg_depth @ p;
-            }
+            u32 avg_depth @ p;
             $ += s;
         }
         (LapFieldDefinitionType::MaxDepth):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 max_depth @ p;
-            }
-            else
-            {
-                be u32 max_depth @ p;
-            }
+            u32 max_depth @ p;
             $ += s;
         }
         (LapFieldDefinitionType::MinTemperature):
@@ -4193,26 +2947,12 @@ struct LapField
         }
         (LapFieldDefinitionType::EnhancedAvgRespirationRate):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 enhanced_avg_respiration_rate @ p;
-            }
-            else
-            {
-                be u16 enhanced_avg_respiration_rate @ p;
-            }
+            u16 enhanced_avg_respiration_rate @ p;
             $ += s;
         }
         (LapFieldDefinitionType::EnhancedMaxRespirationRate):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 enhanced_max_respiration_rate @ p;
-            }
-            else
-            {
-                be u16 enhanced_max_respiration_rate @ p;
-            }
+            u16 enhanced_max_respiration_rate @ p;
             $ += s;
         }
         (LapFieldDefinitionType::AvgRespirationRate):
@@ -4227,62 +2967,27 @@ struct LapField
         }
         (LapFieldDefinitionType::TotalGrit):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le float total_grit @ p;
-            }
-            else
-            {
-                be float total_grit @ p;
-            }
+            float total_grit @ p;
             $ += s;
         }
         (LapFieldDefinitionType::TotalFlow):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le float total_flow @ p;
-            }
-            else
-            {
-                be float total_flow @ p;
-            }
+            float total_flow @ p;
             $ += s;
         }
         (LapFieldDefinitionType::JumpCount):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 jump_count @ p;
-            }
-            else
-            {
-                be u16 jump_count @ p;
-            }
+            u16 jump_count @ p;
             $ += s;
         }
         (LapFieldDefinitionType::AvgGrit):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le float avg_grit @ p;
-            }
-            else
-            {
-                be float avg_grit @ p;
-            }
+            float avg_grit @ p;
             $ += s;
         }
         (LapFieldDefinitionType::AvgFlow):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le float avg_flow @ p;
-            }
-            else
-            {
-                be float avg_flow @ p;
-            }
+            float avg_flow @ p;
             $ += s;
         }
         (LapFieldDefinitionType::TotalFractionalAscent):
@@ -4297,50 +3002,22 @@ struct LapField
         }
         (LapFieldDefinitionType::AvgCoreTemperature):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 avg_core_temperature @ p;
-            }
-            else
-            {
-                be u16 avg_core_temperature @ p;
-            }
+            u16 avg_core_temperature @ p;
             $ += s;
         }
         (LapFieldDefinitionType::MinCoreTemperature):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 min_core_temperature @ p;
-            }
-            else
-            {
-                be u16 min_core_temperature @ p;
-            }
+            u16 min_core_temperature @ p;
             $ += s;
         }
         (LapFieldDefinitionType::MaxCoreTemperature):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 max_core_temperature @ p;
-            }
-            else
-            {
-                be u16 max_core_temperature @ p;
-            }
+            u16 max_core_temperature @ p;
             $ += s;
         }
         (LapFieldDefinitionType::Timestamp):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le DateTime timestamp @ p[[format("format_datetime")]];
-            }
-            else
-            {
-                be DateTime timestamp @ p[[format("format_datetime")]];
-            }
+            be DateTime timestamp @ p[[format("format_datetime")]];
             $ += s;
         }
         (LapFieldDefinitionType::MessageIndex):
@@ -4365,42 +3042,22 @@ struct RecordField
     auto i = std::core::array_index();
     auto s = scratch_defs[i].size;
     auto p = $;
+    std::core::set_endian(ArchToEndian(scratch_fix_header.architecture));
     match (scratch_defs[i].field_definition_num) 
     {
         (RecordFieldDefinitionType::PositionLat):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s32 position_lat @ p;
-            }
-            else
-            {
-                be s32 position_lat @ p;
-            }
+            s32 position_lat @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::PositionLong):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s32 position_long @ p;
-            }
-            else
-            {
-                be s32 position_long @ p;
-            }
+            s32 position_long @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::Altitude):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 altitude @ p;
-            }
-            else
-            {
-                be u16 altitude @ p;
-            }
+            u16 altitude @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::HeartRate):
@@ -4415,62 +3072,27 @@ struct RecordField
         }
         (RecordFieldDefinitionType::Distance):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 distance @ p [[format("format_distance")]];
-            }
-            else
-            {
-                be u32 distance @ p [[format("format_distance")]];
-            }
+            u32 distance @ p [[format("format_distance")]];
             $ += s;
         }
         (RecordFieldDefinitionType::Speed):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 speed @ p;
-            }
-            else
-            {
-                be u16 speed @ p;
-            }
+            u16 speed @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::Power):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 power @ p;
-            }
-            else
-            {
-                be u16 power @ p;
-            }
+            u16 power @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::CompressedSpeedDistance):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                CompressedSpeedDistanceBitField compressed_speed_distance @ p [[bitfield_order(std::core::BitfieldOrder::LeastToMostSignificant, 12)]];;
-            }
-            else
-            {
-                CompressedSpeedDistanceBitField compressed_speed_distance @ p [[bitfield_order(std::core::BitfieldOrder::MostToLeastSignificant, 12)]];;
-            }
+            CompressedSpeedDistanceBitField compressed_speed_distance @ p [[bitfield_order(std::core::BitfieldOrder::MostToLeastSignificant, 12)]];;
             $ += s;
         }
         (RecordFieldDefinitionType::Grade):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s16 grade @ p;
-            }
-            else
-            {
-                be s16 grade @ p;
-            }
+            s16 grade @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::Resistance):
@@ -4480,14 +3102,7 @@ struct RecordField
         }
         (RecordFieldDefinitionType::TimeFromCourse):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s32 time_from_course @ p;
-            }
-            else
-            {
-                be s32 time_from_course @ p;
-            }
+            s32 time_from_course @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::CycleLength):
@@ -4512,38 +3127,17 @@ struct RecordField
         }
         (RecordFieldDefinitionType::TotalCycles):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 total_cycles @ p;
-            }
-            else
-            {
-                be u32 total_cycles @ p;
-            }
+            u32 total_cycles @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::CompressedAccumulatedPower):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 compressed_accumulated_power @ p;
-            }
-            else
-            {
-                be u16 compressed_accumulated_power @ p;
-            }
+            u16 compressed_accumulated_power @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::AccumulatedPower):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 accumulated_power @ p;
-            }
-            else
-            {
-                be u32 accumulated_power @ p;
-            }
+            u32 accumulated_power @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::LeftRightBalance):
@@ -4558,62 +3152,27 @@ struct RecordField
         }
         (RecordFieldDefinitionType::VerticalSpeed):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s16 vertical_speed @ p;
-            }
-            else
-            {
-                be s16 vertical_speed @ p;
-            }
+            s16 vertical_speed @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::Calories):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 calories @ p;
-            }
-            else
-            {
-                be u16 calories @ p;
-            }
+            u16 calories @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::VerticalOscillation):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 vertical_oscillation @ p;
-            }
-            else
-            {
-                be u16 vertical_oscillation @ p;
-            }
+            u16 vertical_oscillation @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::StanceTimePercent):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 stance_time_percent @ p;
-            }
-            else
-            {
-                be u16 stance_time_percent @ p;
-            }
+            u16 stance_time_percent @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::StanceTime):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 stance_time @ p;
-            }
-            else
-            {
-                be u16 stance_time @ p;
-            }
+            u16 stance_time @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::ActivityType):
@@ -4663,26 +3222,12 @@ struct RecordField
         }
         (RecordFieldDefinitionType::BallSpeed):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 ball_speed @ p;
-            }
-            else
-            {
-                be u16 ball_speed @ p;
-            }
+            u16 ball_speed @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::Cadence256):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 cadence256 @ p;
-            }
-            else
-            {
-                be u16 cadence256 @ p;
-            }
+            u16 cadence256 @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::FractionalCadence):
@@ -4692,74 +3237,32 @@ struct RecordField
         }
         (RecordFieldDefinitionType::TotalHemoglobinConc):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 total_hemoglobin_conc @ p;
-            }
-            else
-            {
-                be u16 total_hemoglobin_conc @ p;
-            }
+            u16 total_hemoglobin_conc @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::TotalHemoglobinConcMin):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 total_hemoglobin_conc_min @ p;
-            }
-            else
-            {
-                be u16 total_hemoglobin_conc_min @ p;
-            }
+            u16 total_hemoglobin_conc_min @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::TotalHemoglobinConcMax):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 total_hemoglobin_conc_max @ p;
-            }
-            else
-            {
-                be u16 total_hemoglobin_conc_max @ p;
-            }
+            u16 total_hemoglobin_conc_max @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::SaturatedHemoglobinPercent):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 saturated_hemoglobin_percent @ p;
-            }
-            else
-            {
-                be u16 saturated_hemoglobin_percent @ p;
-            }
+            u16 saturated_hemoglobin_percent @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::SaturatedHemoglobinPercentMin):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 saturated_hemoglobin_percent_min @ p;
-            }
-            else
-            {
-                be u16 saturated_hemoglobin_percent_min @ p;
-            }
+            u16 saturated_hemoglobin_percent_min @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::SaturatedHemoglobinPercentMax):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 saturated_hemoglobin_percent_max @ p;
-            }
-            else
-            {
-                be u16 saturated_hemoglobin_percent_max @ p;
-            }
+            u16 saturated_hemoglobin_percent_max @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::DeviceIndex):
@@ -4799,26 +3302,12 @@ struct RecordField
         }
         (RecordFieldDefinitionType::EnhancedSpeed):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 enhanced_speed @ p;
-            }
-            else
-            {
-                be u32 enhanced_speed @ p;
-            }
+            u32 enhanced_speed @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::EnhancedAltitude):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 enhanced_altitude @ p;
-            }
-            else
-            {
-                be u32 enhanced_altitude @ p;
-            }
+            u32 enhanced_altitude @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::BatterySoc):
@@ -4828,134 +3317,57 @@ struct RecordField
         }
         (RecordFieldDefinitionType::MotorPower):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 motor_power @ p;
-            }
-            else
-            {
-                be u16 motor_power @ p;
-            }
+            u16 motor_power @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::VerticalRatio):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 vertical_ratio @ p;
-            }
-            else
-            {
-                be u16 vertical_ratio @ p;
-            }
+            u16 vertical_ratio @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::StanceTimeBalance):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 stance_time_balance @ p;
-            }
-            else
-            {
-                be u16 stance_time_balance @ p;
-            }
+            u16 stance_time_balance @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::StepLength):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 step_length @ p;
-            }
-            else
-            {
-                be u16 step_length @ p;
-            }
+            u16 step_length @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::CycleLength16):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 cycle_length16 @ p;
-            }
-            else
-            {
-                be u16 cycle_length16 @ p;
-            }
+            u16 cycle_length16 @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::AbsolutePressure):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 absolute_pressure @ p;
-            }
-            else
-            {
-                be u32 absolute_pressure @ p;
-            }
+            u32 absolute_pressure @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::Depth):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 depth @ p;
-            }
-            else
-            {
-                be u32 depth @ p;
-            }
+            u32 depth @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::NextStopDepth):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 next_stop_depth @ p;
-            }
-            else
-            {
-                be u32 next_stop_depth @ p;
-            }
+            u32 next_stop_depth @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::NextStopTime):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 next_stop_time @ p;
-            }
-            else
-            {
-                be u32 next_stop_time @ p;
-            }
+            u32 next_stop_time @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::TimeToSurface):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 time_to_surface @ p;
-            }
-            else
-            {
-                be u32 time_to_surface @ p;
-            }
+            u32 time_to_surface @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::NdlTime):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 ndl_time @ p;
-            }
-            else
-            {
-                be u32 ndl_time @ p;
-            }
+            u32 ndl_time @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::CnsLoad):
@@ -4965,14 +3377,7 @@ struct RecordField
         }
         (RecordFieldDefinitionType::N2Load):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 N2_load @ p;
-            }
-            else
-            {
-                be u16 N2_load @ p;
-            }
+            u16 N2_load @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::RespirationRate):
@@ -4982,62 +3387,27 @@ struct RecordField
         }
         (RecordFieldDefinitionType::EnhancedRespirationRate):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 enhanced_respiration_rate @ p;
-            }
-            else
-            {
-                be u16 enhanced_respiration_rate @ p;
-            }
+            u16 enhanced_respiration_rate @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::Grit):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le float grit @ p;
-            }
-            else
-            {
-                be float grit @ p;
-            }
+            float grit @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::Flow):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le float flow @ p;
-            }
-            else
-            {
-                be float flow @ p;
-            }
+            float flow @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::CurrentStress):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 current_stress @ p;
-            }
-            else
-            {
-                be u16 current_stress @ p;
-            }
+            u16 current_stress @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::EbikeTravelRange):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 ebike_travel_range @ p;
-            }
-            else
-            {
-                be u16 ebike_travel_range @ p;
-            }
+            u16 ebike_travel_range @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::EbikeBatteryLevel):
@@ -5057,62 +3427,27 @@ struct RecordField
         }
         (RecordFieldDefinitionType::AirTimeRemaining):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 air_time_remaining @ p;
-            }
-            else
-            {
-                be u32 air_time_remaining @ p;
-            }
+            u32 air_time_remaining @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::PressureSac):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 pressure_sac @ p;
-            }
-            else
-            {
-                be u16 pressure_sac @ p;
-            }
+            u16 pressure_sac @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::VolumeSac):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 volume_sac @ p;
-            }
-            else
-            {
-                be u16 volume_sac @ p;
-            }
+            u16 volume_sac @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::Rmv):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 rmv @ p;
-            }
-            else
-            {
-                be u16 rmv @ p;
-            }
+            u16 rmv @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::AscentRate):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le s32 ascent_rate @ p;
-            }
-            else
-            {
-                be s32 ascent_rate @ p;
-            }
+            s32 ascent_rate @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::Po2):
@@ -5122,26 +3457,12 @@ struct RecordField
         }
         (RecordFieldDefinitionType::CoreTemperature):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 core_temperature @ p;
-            }
-            else
-            {
-                be u16 core_temperature @ p;
-            }
+            u16 core_temperature @ p;
             $ += s;
         }
         (RecordFieldDefinitionType::Timestamp):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le DateTime timestamp @ p[[format("format_datetime")]];
-            }
-            else
-            {
-                be DateTime timestamp @ p[[format("format_datetime")]];
-            }
+            DateTime timestamp @ p[[format("format_datetime")]];
             $ += s;
         }
     }
@@ -5152,18 +3473,11 @@ struct FileIdField
     auto i = std::core::array_index();
     auto s = scratch_defs[i].size;
     auto p = $;
-       
+    std::core::set_endian(ArchToEndian(scratch_fix_header.architecture));
     match (scratch_defs[i].field_definition_num) 
     {
         (FileIdFieldDefinitionType::TimeCreated): {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le DateTime time_created @ p [[format("format_local_datetime")]];
-            }
-            else
-            {
-                be DateTime time_created @ p [[format("format_local_datetime")]];
-            }
+            DateTime time_created @ p [[format("format_local_datetime")]];
             scratch_time_created = time_created;
             $ += s;
         }
@@ -5173,50 +3487,22 @@ struct FileIdField
         }
         (FileIdFieldDefinitionType::Manufacturer):
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 manufacturer @ p;
-            }
-            else
-            {
-                be u16 manufacturer @ p;
-            }            
+            u16 manufacturer @ p;
             $ += s;
         }
         (FileIdFieldDefinitionType::Product): 
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 product @ p;
-            }
-            else
-            {
-                be u16 product @ p;
-            }
+            u16 product @ p;
             $ += s;
         }
         (FileIdFieldDefinitionType::SerialNumber): 
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u32 serial_number @ p;
-            }
-            else
-            {
-                be u32 serial_number @ p;
-            }
+            be u32 serial_number @ p;
             $ += s;
         }
         (FileIdFieldDefinitionType::Number): 
         {
-            if (scratch_fix_header.architecture == Architecture::LittleEndian)
-            {
-                le u16 number @ p;
-            }
-            else
-            {
-                be u16 number @ p;
-            }
+            u16 number @ p;
             $ += s;
         }
         (FileIdFieldDefinitionType::ProductName): 
@@ -5237,7 +3523,7 @@ struct DataMessage
         (MsgNum::Session): SessionField fields[scratch_fix_header.field_num];
         (MsgNum::Lap): LapField fields[scratch_fix_header.field_num];
         (MsgNum::Record): RecordField fields[scratch_fix_header.field_num];
-        (_): std::error("Invalid data message type code!");;
+        (_): std::error(std::format("Invalid data message type code! MsgNum:{}", u16(subtype)));
     }
 };
 
@@ -5279,7 +3565,8 @@ struct FitFile
 {
     Header header;
     Record records[while(!std::mem::reached(sizeof(Header) + header.data_size))] @ sizeof(Header);
-    le u16 CRC @ sizeof(Header) + header.data_size;
+    std::core::set_endian(ArchToEndian(scratch_fix_header.architecture));
+    u16 CRC @ sizeof(Header) + header.data_size;
 };
 
 clearScratchFixedHeader();
@@ -5297,7 +3584,8 @@ fn ValidateFile(u8 header_size, u32 data_size)
     u8 data[size] @ 0x00 in crc_scratch;
     std::mem::copy_section_to_section(0, 0x00, crc_scratch, 0x00, size);
     
-    le u16 crc = 0;
+    std::core::set_endian(ArchToEndian(scratch_fix_header.architecture));
+    u16 crc = 0;
     crc = check_crc(crc, data, size);
     std::mem::delete_section(crc_scratch);
     
