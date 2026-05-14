@@ -25,7 +25,7 @@ enum Architecture : u8
     BigEndian = 0x1
 };
 
-Architecture global_architecture @ 0x0E;
+Architecture global_architecture @ 0x0E [[hidden]];
 
 fn ArchToEndian(Architecture a)
 {
