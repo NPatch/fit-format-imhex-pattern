@@ -1570,54 +1570,52 @@ struct ActivityField
     auto s = scratch_defs[i].size;
     auto p = $;
     u8 fdn = u8(scratch_defs[i].field_definition_num);
-    match (fdn)
-    {
-        (ActivityFieldDefinitionType::Timestamp): {
-            if(scratch_fix_header.architecture == Architecture::BigEndian){
-                be DateTime timestamp @ p [[format("format_datetime")]];
+#ifdef DEBUG_MODE
+    std::print(std::format("ActivityField: FDN:{} Index:{},Size:{},Pointer:{:X} ", fdn, i, s, p));
+#endif
+    try{
+        match (fdn)
+        {
+            (ActivityFieldDefinitionType::Timestamp): {
+                DateTime timestamp @ p [[format("format_datetime")]];
             }
-            else
+            (ActivityFieldDefinitionType::TotalTimerTime): 
             {
-                le DateTime timestamp @ p [[format("format_datetime")]];
+                u32 total_timer_time @ p;
             }
-            scratch_time_created = time_created;
-        }
-        (ActivityFieldDefinitionType::TotalTimerTime): 
-        {
-            u32 total_timer_time;
-        }
-        (ActivityFieldDefinitionType::NumSessions): 
-        {
-            u16 num_sessions;
-        }
-        (ActivityFieldDefinitionType::Type): 
-        {
-            FileType type;
-        }
-        (ActivityFieldDefinitionType::Event): 
-        {
-            Event event;
-        }
-        (ActivityFieldDefinitionType::EventType):
-        {
-            EventType event_type;
-        }
-        (ActivityFieldDefinitionType::LocalTimestamp): 
-        {
-            if(scratch_fix_header.architecture == Architecture::BigEndian){
-                be LocalDateTime local_timestamp [[format("format_local_datetime")]];
-            }
-            else
+            (ActivityFieldDefinitionType::NumSessions): 
             {
-                le LocalDateTime local_timestamp [[format("format_local_datetime")]];
+                u16 num_sessions @ p;
             }
-        }
-        (ActivityFieldDefinitionType::EventGroup): 
-        {
-            u8 event_group;
+            (ActivityFieldDefinitionType::Type): 
+            {
+                FileType type @ p;
+            }
+            (ActivityFieldDefinitionType::Event): 
+            {
+                Event event @ p;
+            }
+            (ActivityFieldDefinitionType::EventType):
+            {
+                EventType event_type @ p;
+            }
+            (ActivityFieldDefinitionType::LocalTimestamp): 
+            {
+                LocalDateTime local_timestamp @ p [[format("format_local_datetime")]];
+            }
+            (ActivityFieldDefinitionType::EventGroup): 
+            {
+                u8 event_group @ p;
+            }
         }
     }
+    catch{
+        u8 uknown[s] @ p;
+    }
     $ += s;
+#ifdef DEBUG_MODE
+    std::print(std::format("ActivityField: Bumped $ to {:X}", $));
+#endif
 };
 
 enum MessageIndexType : u8
@@ -1666,785 +1664,798 @@ struct SessionField
     auto i = std::core::array_index();
     auto s = scratch_defs[i].size;
     auto p = $;
-    match (scratch_defs[i].field_definition_num) 
+    u8 fdn = u8(scratch_defs[i].field_definition_num);
+#ifdef DEBUG_MODE
+    std::print(std::format("SessionField: FDN:{} Index:{},Size:{},Pointer:{:X} ", fdn, i, s, p));
+#endif
+    try
     {
-        (SessionFieldDefinitionType::MessageIndex): 
-        {
-            MessageIndexType message_index @ p;
-        }
-        
-        (SessionFieldDefinitionType::Timestamp): 
-        {
-            DateTime timestamp @ p [[format("format_datetime")]];
-        }
-        
-        (SessionFieldDefinitionType::Event): {
-            Event event @ p;
-        }
-        
-        (SessionFieldDefinitionType::EventType): {
-            EventType event_type @ p;
-        }
-        
-        (SessionFieldDefinitionType::StartTime): 
-        {
-            DateTime start_time @ p;
-        }
-        
-        (SessionFieldDefinitionType::StartPositionLat): 
-        {
-            s32 start_position_lat @ p;
-        }
-        
-        (SessionFieldDefinitionType::StartPositionLong): 
-        {
-            s32 start_position_long @ p;
-        }
-        
-        (SessionFieldDefinitionType::Sport): {
-            SportType sport @ p;
-        }
-        
-        (SessionFieldDefinitionType::SubSport): {
-            SubSportType sub_sport @ p;
-        }
-        
-        (SessionFieldDefinitionType::TotalElapsedTime): 
-        {
-            u32 total_elapsed_time @ p;
-        }
-        
-        (SessionFieldDefinitionType::TotalTimerTime): 
-        {
-            u32 total_timer_time @ p;
-        }
-        
-        (SessionFieldDefinitionType::TotalDistance): 
-        {
-            u32 total_distance @ p;
-        }
-        
-        (SessionFieldDefinitionType::TotalCycles): 
-        {
-            u32 total_cycles @ p;
-        }
-        
-        (SessionFieldDefinitionType::TotalCalories):
-        {
-            u16 total_calories @ p;
-        }
-        
-        (SessionFieldDefinitionType::TotalFatCalories):
-        {
-            u16 total_fat_calories @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgSpeed):
-        {
-            u16 avg_speed @ p;
-        }
-        
-        (SessionFieldDefinitionType::MaxSpeed):
-        {
-            u16 max_speed @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgHeartRate):
-        {
-            u8 avg_heart_rate @ p;
-        }
-        
-        (SessionFieldDefinitionType::MaxHeartRate):
-        {
-            u8 max_heart_rate @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgCadence):
-        {
-            u8 avg_cadence @ p;
-        }
-        
-        (SessionFieldDefinitionType::MaxCadence):
-        {
-            u8 max_cadence @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgPower):
-        {
-            u16 avg_power @ p;
-        }
-        
-        (SessionFieldDefinitionType::MaxPower):
-        {
-            u16 max_power @ p;
-        }
-        
-        (SessionFieldDefinitionType::TotalAscent):
-        {
-            u16 total_ascent @ p;
-        }
-        
-        (SessionFieldDefinitionType::TotalDescent):
-        {
-            u16 total_descent @ p;
-        }
-        
-        (SessionFieldDefinitionType::TotalTrainingEffect):
-        {
-            u8 total_training_effect @ p;
-        }
-        
-        (SessionFieldDefinitionType::FirstLapIndex):
-        {
-            u16 first_lap_index @ p;
-        }
-        
-        (SessionFieldDefinitionType::NumLaps):
-        {
-            u16 num_laps @ p;
-        }
-        
-        (SessionFieldDefinitionType::EventGroup):
-        {
-            u8 event_group @ p;
-        }
-        
-        (SessionFieldDefinitionType::Trigger):
-        {
-            SessionTriggerType session_trigger @ p;
-        }
-        
-        (SessionFieldDefinitionType::NecLat):
-        {
-            s32 nec_lat @ p;
-        }
-        
-        (SessionFieldDefinitionType::NecLong):
-        {
-            s32 nec_long @ p;
-        }
-        
-        (SessionFieldDefinitionType::SwcLat):
-        {
-            s32 swc_lat @ p;
-        }
-        
-        (SessionFieldDefinitionType::SwcLong):
-        {
-            s32 swc_long @ p;
-        }
-        
-        (SessionFieldDefinitionType::NumLengths):
-        {
-            u16 num_lengths @ p;
-        }
-        
-        (SessionFieldDefinitionType::NormalizedPower):
-        {
-            u16 normalized_power @ p;
-        }
-        
-        (SessionFieldDefinitionType::TrainingStressScore):
-        {
-            u16 training_stress_score @ p;
-        }
-        
-        (SessionFieldDefinitionType::IntensityFactor):
-        {
-            u16 intensity_factor @ p;
-        }
-        
-        (SessionFieldDefinitionType::LeftRightBalance):
-        {
-            LeftRightBalance100Type left_right_balance @ p;
-        }
-        
-        (SessionFieldDefinitionType::EndPositionLat):
-        {
-            s32 end_position_lat @ p;
-        }
-        
-        (SessionFieldDefinitionType::EndPositionLong):
-        {
-            s32 end_position_long @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgStrokeCount):
-        {
-            u32 avg_stroke_count @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgStrokeDistance):
-        {
-            u16 avg_stroke_distance @ p;
-        }
-        
-        (SessionFieldDefinitionType::SwimStroke):
-        {
-            SwimStrokeType swim_stroke @ p;
-        }
-        
-        (SessionFieldDefinitionType::PoolLength):
-        {
-            u16 pool_length @ p;
-        }
-        
-        (SessionFieldDefinitionType::ThresholdPower):
-        {
-            u16 threshold_power @ p;
-        }
-        
-        (SessionFieldDefinitionType::NumActiveLengths):
-        {
-            u16 num_active_lengths @ p;
-        }
-        
-        (SessionFieldDefinitionType::TotalWork):
-        {
-            u32 total_work @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgAltitude):
-        {
-            u16 avg_altitude @ p;
-        }
-        
-        (SessionFieldDefinitionType::MaxAltitude):
-        {
-            u16 max_altitude @ p;
-        }
-        
-        (SessionFieldDefinitionType::GpsAccuracy):
-        {
-            u8 gps_accuracy @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgGrade):
-        {
-            s16 avg_grade @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgPosGrade):
-        {
-            s16 avg_pos_grade @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgNegGrade):
-        {
-            s16 avg_neg_grade @ p;
-        }
-        
-        (SessionFieldDefinitionType::MaxPosGrade):
-        {
-            s16 max_pos_grade @ p;
-        }
-        
-        (SessionFieldDefinitionType::MaxNegGrade):
-        {
-            s16 max_neg_grade @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgTemperature):
-        {
-            s8 avg_temperature @ p;
-        }
-        
-        (SessionFieldDefinitionType::MaxTemperature):
-        {
-            s8 max_temperature @ p;
-        }
-        
-        (SessionFieldDefinitionType::TotalMovingTime):
-        {
-            u32 total_moving_time @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgPosVerticalSpeed):
-        {
-            s16 avg_pos_vertical_speed @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgNegVerticalSpeed):
-        {
-            s16 avg_neg_vertical_speed @ p;
-        }
-        
-        (SessionFieldDefinitionType::MaxPosVerticalSpeed):
-        {
-            s16 max_pos_vertical_speed @ p;
-        }
-        
-        (SessionFieldDefinitionType::MaxNegVerticalSpeed):
-        {
-            s16 max_neg_vertical_speed @ p;
-        }
-        
-        (SessionFieldDefinitionType::MinHeartRate):
-        {
-            u8 min_heart_rate @ p;
-        }
-        
-        (SessionFieldDefinitionType::TimeInHrZone):
-        {
-            u32 time_in_hr_zone @ p;
-        }
-        
-        (SessionFieldDefinitionType::TimeInSpeedZone):
-        {
-            u32 time_in_speed_zone @ p;
-        }
-        
-        (SessionFieldDefinitionType::TimeInCadenceZone):
-        {
-            u32 time_in_cadence_zone @ p;
-        }
-        
-        (SessionFieldDefinitionType::TimeInPowerZone):
-        {
-            u32 time_in_power_zone @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgLapTime):
-        {
-            u32 avg_lap_time @ p;
-        }
-        
-        (SessionFieldDefinitionType::BestLapIndex):
-        {
-            u16 best_lap_index @ p;
-        }
-        
-        (SessionFieldDefinitionType::MinAltitude):
-        {
-            u16 min_altitude @ p;
-        }
-        
-        (SessionFieldDefinitionType::PlayerScore):
-        {
-            u16 player_score @ p;
-        }
-        
-        (SessionFieldDefinitionType::OpponentScore):
-        {
-            u16 opponent_score @ p;
-        }
-        
-        (SessionFieldDefinitionType::OpponentName):
-        {
-            str opponent_name @ p;
-        }
-        
-        (SessionFieldDefinitionType::StrokeCount):
-        {
-            u16 stroke_count @ p;
-        }
-        
-        (SessionFieldDefinitionType::ZoneCount):
-        {
-            u16 zone_count @ p;
-        }
-        
-        (SessionFieldDefinitionType::MaxBallSpeed):
-        {
-            u16 max_ball_speed @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgBallSpeed):
-        {
-            u16 avg_ball_speed @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgVerticalOscillation):
-        {
-            u16 avg_vertical_oscillation @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgStanceTimePercent):
-        {
-            u16 avg_stance_time_percent @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgStanceTime):
-        {
-            u16 avg_stance_time @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgFractionalCadence):
-        {
-            u8 avg_fractional_cadence @ p;
-        }
-        
-        (SessionFieldDefinitionType::MaxFractionalCadence):
-        {
-            u8 max_fractional_cadence @ p;
-        }
-        
-        (SessionFieldDefinitionType::TotalFractionalCycles):
-        {
-            u8 total_fractional_cycles @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgTotalHemoglobinConc):
-        {
-            u16 avg_total_hemoglobin_conc @ p;
-        }
-        
-        (SessionFieldDefinitionType::MinTotalHemoglobinConc):
-        {
-            u16 min_total_hemoglobin_conc @ p;
-        }
-        
-        (SessionFieldDefinitionType::MaxTotalHemoglobinConc):
-        {
-            u16 max_total_hemoglobin_conc @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgSaturatedHemoglobinPercent):
-        {
-            u16 avg_saturated_hemoglobin_percent @ p;
-        }
-        
-        (SessionFieldDefinitionType::MinSaturatedHemoglobinPercent):
-        {
-            u16 min_saturated_hemoglobin_percent @ p;
-        }
-        
-        (SessionFieldDefinitionType::MaxSaturatedHemoglobinPercent):
-        {
-            u16 max_saturated_hemoglobin_percent @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgLeftTorqueEffectiveness):
-        {
-            u8 avg_left_torque_effectiveness @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgRightTorqueEffectiveness):
-        {
-            u8 avg_right_torque_effectiveness @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgLeftPedalSmoothness):
-        {
-            u8 avg_left_pedal_smoothness @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgRightPedalSmoothness):
-        {
-            u8 avg_left_pedal_smoothness @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgCombinedPedalSmoothness):
-        {
-            u8 avg_combined_pedal_smoothness @ p;
-        }
-        
-        (SessionFieldDefinitionType::SportProfileName):
-        {
-            str sport_profile_name @ p;
-        }
-        
-        (SessionFieldDefinitionType::SportIndex):
-        {
-            u8 sport_index @ p;
-        }
-        
-        (SessionFieldDefinitionType::TimeStanding):
-        {
-            u32 time_standing @ p;
-        }
-        
-        (SessionFieldDefinitionType::StandCount):
-        {
-            u16 stand_count @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgLeftPco):
-        {
-            s8 avg_left_pco @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgRightPco):
-        {
-            s8 avg_right_pco @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgLeftPowerPhase):
-        {
-            u8 avg_left_power_phase @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgLeftPowerPhasePeak):
-        {
-            u8 avg_left_power_phase_peak @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgRightPowerPhase):
-        {
-            u8 avg_right_power_phase @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgRightPowerPhasePeak):
-        {
-            u8 avg_right_power_phase_peak @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgPowerPosition):
-        {
-            u16 avg_power_position @ p;
-        }
-        
-        (SessionFieldDefinitionType::MaxPowerPosition):
-        {
-            u16 max_power_position @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgCadencePosition):
-        {
-            u8 avg_cadence_position @ p;
-        }
-        
-        (SessionFieldDefinitionType::MaxCadencePosition):
-        {
-            u8 max_cadence_position @ p;
-        }
-        
-        (SessionFieldDefinitionType::EnhancedAvgSpeed):
-        {
-            u32 enhanced_avg_speed @ p;
-        }
-        
-        (SessionFieldDefinitionType::EnhancedMaxSpeed):
-        {
-            u32 enhanced_max_speed @ p;
-        }
-        
-        (SessionFieldDefinitionType::EnhancedAvgAltitude):
-        {
-            u32 enhanced_avg_altitude @ p;
-        }
-        
-        (SessionFieldDefinitionType::EnhancedMinAltitude):
-        {
-            u32 enhanced_min_altitude @ p;
-        }
-        
-        (SessionFieldDefinitionType::EnhancedMaxAltitude):
-        {
-            u32 enhanced_max_altitude @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgLevMotorPower):
-        {
-            u16 avg_lev_motor_power @ p;
-        }
-        
-        (SessionFieldDefinitionType::MaxLevMotorPower):
-        {
-            u16 max_lev_motor_power @ p;
-        }
-        
-        (SessionFieldDefinitionType::LevBatteryConsumption):
-        {
-            u8 lev_battery_consumption @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgVerticalRatio):
-        {
-            u16 avg_vertical_ratio @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgStanceTimeBalance):
-        {
-            u16 avg_stance_time_balance @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgStepLength):
-        {
-            u16 avg_step_length @ p;
-        }
-        
-        (SessionFieldDefinitionType::TotalAnaerobicTrainingEffect):
-        {
-            u8 total_anaerobic_training_effect @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgVam):
-        {
-            u16 avg_vam @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgDepth):
-        {
-            u32 avg_depth @ p;
-        }
-        
-        (SessionFieldDefinitionType::MaxDepth):
-        {
-            u32 max_depth @ p;
-        }
-        
-        (SessionFieldDefinitionType::SurfaceInterval):
-        {
-            u32 surface_interval @ p;
-        }
-        
-        (SessionFieldDefinitionType::StartCns):
-        {
-            u8 start_cns @ p;
-        }
-        
-        (SessionFieldDefinitionType::EndCns):
-        {
-            u8 end_cns @ p;
-        }
-        
-        (SessionFieldDefinitionType::StartN2):
-        {
-            u16 start_n2 @ p;
-        }
-        
-        (SessionFieldDefinitionType::EndN2):
-        {
-            u16 end_n2 @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgRespirationRate):
-        {
-            u8 avg_respiration_rate @ p;
-        }
-        
-        (SessionFieldDefinitionType::MaxRespirationRate):
-        {
-            u8 max_respiration_rate @ p;
-        }
-        
-        (SessionFieldDefinitionType::MinRespirationRate):
-        {
-            u8 min_respiration_rate @ p;
-        }
-        
-        (SessionFieldDefinitionType::MinTemperature):
-        {
-            s8 min_temperature @ p;
-        }
-        
-        (SessionFieldDefinitionType::O2Toxicity):
-        {
-            u16 o2_toxicity @ p;
-        }
-        
-        (SessionFieldDefinitionType::DiveNumber):
-        {
-            u32 dive_number @ p;
-        }
-        
-        (SessionFieldDefinitionType::TrainingLoadPeak):
-        {
-            s32 training_load_peak @ p;
-        }
-        
-        (SessionFieldDefinitionType::EnhancedAvgRespirationRate):
-        {
-            u16 enhanced_avg_respiration_rate @ p;
-        }
-        
-        (SessionFieldDefinitionType::EnhancedMaxRespirationRate):
-        {
-            u16 enhanced_max_respiration_rate @ p;
-        }
-        
-        (SessionFieldDefinitionType::EnhancedMinRespirationRate):
-        {
-            u16 enhanced_min_respiration_rate @ p;
-        }
-        
-        (SessionFieldDefinitionType::TotalGrit):
-        {
-            float total_grit @ p;
-        }
-        
-        (SessionFieldDefinitionType::TotalFlow):
-        {
-            float total_flow @ p;
-        }
-        
-        (SessionFieldDefinitionType::JumpCount):
-        {
-            u16 jump_count @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgGrit):
-        {
-            float avg_grit @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgFlow):
-        {
-            float avg_flow @ p;
-        }
-        
-        (SessionFieldDefinitionType::WorkoutFeel):
-        {
-            u8 workout_feel @ p;
-        }
-        
-        (SessionFieldDefinitionType::WorkoutRpe):
-        {
-            u8 workout_rpe @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgSpo2):
-        {
-            u8 avg_spo2 @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgStress):
-        {
-            u8 avg_stress @ p;
-        }
-        
-        (SessionFieldDefinitionType::MetabolicCalories):
-        {
-            u16 metabolic_calories @ p;
-        }
-        
-        (SessionFieldDefinitionType::SdrrHrv):
-        {
-            u8 sdrr_hrv @ p;
-        }
-        
-        (SessionFieldDefinitionType::RmssdHrv):
-        {
-            u8 rmssd_hrv @ p;
-        }
-        
-        (SessionFieldDefinitionType::TotalFractionalAscent):
-        {
-            u8 total_fractional_ascent @ p;
-        }
-        
-        (SessionFieldDefinitionType::TotalFractionalDescent):
-        {
-            u8 total_fractional_descent @ p;
-        }
-        
-        (SessionFieldDefinitionType::AvgCoreTemperature):
-        {
-            u16 avg_core_temperature @ p;
-        }
-        
-        (SessionFieldDefinitionType::MinCoreTemperature):
-        {
-            u16 min_core_temperature @ p;
-        }
-        
-        (SessionFieldDefinitionType::MaxCoreTemperature):
-        {
-            u16 max_core_temperature @ p;
+        match (fdn) 
+        {
+            (SessionFieldDefinitionType::MessageIndex): 
+            {
+                MessageIndexType message_index @ p;
+            }
+            
+            (SessionFieldDefinitionType::Timestamp): 
+            {
+                DateTime timestamp @ p [[format("format_datetime")]];
+            }
+            
+            (SessionFieldDefinitionType::Event): {
+                Event event @ p;
+            }
+            
+            (SessionFieldDefinitionType::EventType): {
+                EventType event_type @ p;
+            }
+            
+            (SessionFieldDefinitionType::StartTime): 
+            {
+                DateTime start_time @ p;
+            }
+            
+            (SessionFieldDefinitionType::StartPositionLat): 
+            {
+                s32 start_position_lat @ p [[format("format_lat")]];
+            }
+            
+            (SessionFieldDefinitionType::StartPositionLong): 
+            {
+                s32 start_position_long @ p [[format("format_long")]];
+            }
+            
+            (SessionFieldDefinitionType::Sport): {
+                SportType sport @ p;
+            }
+            
+            (SessionFieldDefinitionType::SubSport): {
+                SubSportType sub_sport @ p;
+            }
+            
+            (SessionFieldDefinitionType::TotalElapsedTime): 
+            {
+                u32 total_elapsed_time @ p;
+            }
+            
+            (SessionFieldDefinitionType::TotalTimerTime): 
+            {
+                u32 total_timer_time @ p;
+            }
+            
+            (SessionFieldDefinitionType::TotalDistance): 
+            {
+                u32 total_distance @ p;
+            }
+            
+            (SessionFieldDefinitionType::TotalCycles): 
+            {
+                u32 total_cycles @ p;
+            }
+            
+            (SessionFieldDefinitionType::TotalCalories):
+            {
+                u16 total_calories @ p;
+            }
+            
+            (SessionFieldDefinitionType::TotalFatCalories):
+            {
+                u16 total_fat_calories @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgSpeed):
+            {
+                u16 avg_speed @ p;
+            }
+            
+            (SessionFieldDefinitionType::MaxSpeed):
+            {
+                u16 max_speed @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgHeartRate):
+            {
+                u8 avg_heart_rate @ p;
+            }
+            
+            (SessionFieldDefinitionType::MaxHeartRate):
+            {
+                u8 max_heart_rate @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgCadence):
+            {
+                u8 avg_cadence @ p;
+            }
+            
+            (SessionFieldDefinitionType::MaxCadence):
+            {
+                u8 max_cadence @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgPower):
+            {
+                u16 avg_power @ p;
+            }
+            
+            (SessionFieldDefinitionType::MaxPower):
+            {
+                u16 max_power @ p;
+            }
+            
+            (SessionFieldDefinitionType::TotalAscent):
+            {
+                u16 total_ascent @ p;
+            }
+            
+            (SessionFieldDefinitionType::TotalDescent):
+            {
+                u16 total_descent @ p;
+            }
+            
+            (SessionFieldDefinitionType::TotalTrainingEffect):
+            {
+                u8 total_training_effect @ p;
+            }
+            
+            (SessionFieldDefinitionType::FirstLapIndex):
+            {
+                u16 first_lap_index @ p;
+            }
+            
+            (SessionFieldDefinitionType::NumLaps):
+            {
+                u16 num_laps @ p;
+            }
+            
+            (SessionFieldDefinitionType::EventGroup):
+            {
+                u8 event_group @ p;
+            }
+            
+            (SessionFieldDefinitionType::Trigger):
+            {
+                SessionTriggerType session_trigger @ p;
+            }
+            
+            (SessionFieldDefinitionType::NecLat):
+            {
+                s32 nec_lat @ p;
+            }
+            
+            (SessionFieldDefinitionType::NecLong):
+            {
+                s32 nec_long @ p;
+            }
+            
+            (SessionFieldDefinitionType::SwcLat):
+            {
+                s32 swc_lat @ p;
+            }
+            
+            (SessionFieldDefinitionType::SwcLong):
+            {
+                s32 swc_long @ p;
+            }
+            
+            (SessionFieldDefinitionType::NumLengths):
+            {
+                u16 num_lengths @ p;
+            }
+            
+            (SessionFieldDefinitionType::NormalizedPower):
+            {
+                u16 normalized_power @ p;
+            }
+            
+            (SessionFieldDefinitionType::TrainingStressScore):
+            {
+                u16 training_stress_score @ p;
+            }
+            
+            (SessionFieldDefinitionType::IntensityFactor):
+            {
+                u16 intensity_factor @ p;
+            }
+            
+            (SessionFieldDefinitionType::LeftRightBalance):
+            {
+                LeftRightBalance100Type left_right_balance @ p;
+            }
+            
+            (SessionFieldDefinitionType::EndPositionLat):
+            {
+                s32 end_position_lat @ p [[format("format_lat")]];
+            }
+            
+            (SessionFieldDefinitionType::EndPositionLong):
+            {
+                s32 end_position_long @ p [[format("format_long")]];
+            }
+            
+            (SessionFieldDefinitionType::AvgStrokeCount):
+            {
+                u32 avg_stroke_count @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgStrokeDistance):
+            {
+                u16 avg_stroke_distance @ p;
+            }
+            
+            (SessionFieldDefinitionType::SwimStroke):
+            {
+                SwimStrokeType swim_stroke @ p;
+            }
+            
+            (SessionFieldDefinitionType::PoolLength):
+            {
+                u16 pool_length @ p;
+            }
+            
+            (SessionFieldDefinitionType::ThresholdPower):
+            {
+                u16 threshold_power @ p;
+            }
+            
+            (SessionFieldDefinitionType::NumActiveLengths):
+            {
+                u16 num_active_lengths @ p;
+            }
+            
+            (SessionFieldDefinitionType::TotalWork):
+            {
+                u32 total_work @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgAltitude):
+            {
+                u16 avg_altitude @ p;
+            }
+            
+            (SessionFieldDefinitionType::MaxAltitude):
+            {
+                u16 max_altitude @ p;
+            }
+            
+            (SessionFieldDefinitionType::GpsAccuracy):
+            {
+                u8 gps_accuracy @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgGrade):
+            {
+                s16 avg_grade @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgPosGrade):
+            {
+                s16 avg_pos_grade @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgNegGrade):
+            {
+                s16 avg_neg_grade @ p;
+            }
+            
+            (SessionFieldDefinitionType::MaxPosGrade):
+            {
+                s16 max_pos_grade @ p;
+            }
+            
+            (SessionFieldDefinitionType::MaxNegGrade):
+            {
+                s16 max_neg_grade @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgTemperature):
+            {
+                s8 avg_temperature @ p;
+            }
+            
+            (SessionFieldDefinitionType::MaxTemperature):
+            {
+                s8 max_temperature @ p;
+            }
+            
+            (SessionFieldDefinitionType::TotalMovingTime):
+            {
+                u32 total_moving_time @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgPosVerticalSpeed):
+            {
+                s16 avg_pos_vertical_speed @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgNegVerticalSpeed):
+            {
+                s16 avg_neg_vertical_speed @ p;
+            }
+            
+            (SessionFieldDefinitionType::MaxPosVerticalSpeed):
+            {
+                s16 max_pos_vertical_speed @ p;
+            }
+            
+            (SessionFieldDefinitionType::MaxNegVerticalSpeed):
+            {
+                s16 max_neg_vertical_speed @ p;
+            }
+            
+            (SessionFieldDefinitionType::MinHeartRate):
+            {
+                u8 min_heart_rate @ p;
+            }
+            
+            (SessionFieldDefinitionType::TimeInHrZone):
+            {
+                u32 time_in_hr_zone @ p;
+            }
+            
+            (SessionFieldDefinitionType::TimeInSpeedZone):
+            {
+                u32 time_in_speed_zone @ p;
+            }
+            
+            (SessionFieldDefinitionType::TimeInCadenceZone):
+            {
+                u32 time_in_cadence_zone @ p;
+            }
+            
+            (SessionFieldDefinitionType::TimeInPowerZone):
+            {
+                u32 time_in_power_zone @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgLapTime):
+            {
+                u32 avg_lap_time @ p;
+            }
+            
+            (SessionFieldDefinitionType::BestLapIndex):
+            {
+                u16 best_lap_index @ p;
+            }
+            
+            (SessionFieldDefinitionType::MinAltitude):
+            {
+                u16 min_altitude @ p;
+            }
+            
+            (SessionFieldDefinitionType::PlayerScore):
+            {
+                u16 player_score @ p;
+            }
+            
+            (SessionFieldDefinitionType::OpponentScore):
+            {
+                u16 opponent_score @ p;
+            }
+            
+            (SessionFieldDefinitionType::OpponentName):
+            {
+                str opponent_name @ p;
+            }
+            
+            (SessionFieldDefinitionType::StrokeCount):
+            {
+                u16 stroke_count @ p;
+            }
+            
+            (SessionFieldDefinitionType::ZoneCount):
+            {
+                u16 zone_count @ p;
+            }
+            
+            (SessionFieldDefinitionType::MaxBallSpeed):
+            {
+                u16 max_ball_speed @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgBallSpeed):
+            {
+                u16 avg_ball_speed @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgVerticalOscillation):
+            {
+                u16 avg_vertical_oscillation @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgStanceTimePercent):
+            {
+                u16 avg_stance_time_percent @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgStanceTime):
+            {
+                u16 avg_stance_time @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgFractionalCadence):
+            {
+                u8 avg_fractional_cadence @ p;
+            }
+            
+            (SessionFieldDefinitionType::MaxFractionalCadence):
+            {
+                u8 max_fractional_cadence @ p;
+            }
+            
+            (SessionFieldDefinitionType::TotalFractionalCycles):
+            {
+                u8 total_fractional_cycles @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgTotalHemoglobinConc):
+            {
+                u16 avg_total_hemoglobin_conc @ p;
+            }
+            
+            (SessionFieldDefinitionType::MinTotalHemoglobinConc):
+            {
+                u16 min_total_hemoglobin_conc @ p;
+            }
+            
+            (SessionFieldDefinitionType::MaxTotalHemoglobinConc):
+            {
+                u16 max_total_hemoglobin_conc @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgSaturatedHemoglobinPercent):
+            {
+                u16 avg_saturated_hemoglobin_percent @ p;
+            }
+            
+            (SessionFieldDefinitionType::MinSaturatedHemoglobinPercent):
+            {
+                u16 min_saturated_hemoglobin_percent @ p;
+            }
+            
+            (SessionFieldDefinitionType::MaxSaturatedHemoglobinPercent):
+            {
+                u16 max_saturated_hemoglobin_percent @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgLeftTorqueEffectiveness):
+            {
+                u8 avg_left_torque_effectiveness @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgRightTorqueEffectiveness):
+            {
+                u8 avg_right_torque_effectiveness @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgLeftPedalSmoothness):
+            {
+                u8 avg_left_pedal_smoothness @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgRightPedalSmoothness):
+            {
+                u8 avg_left_pedal_smoothness @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgCombinedPedalSmoothness):
+            {
+                u8 avg_combined_pedal_smoothness @ p;
+            }
+            
+            (SessionFieldDefinitionType::SportProfileName):
+            {
+                str sport_profile_name @ p;
+            }
+            
+            (SessionFieldDefinitionType::SportIndex):
+            {
+                u8 sport_index @ p;
+            }
+            
+            (SessionFieldDefinitionType::TimeStanding):
+            {
+                u32 time_standing @ p;
+            }
+            
+            (SessionFieldDefinitionType::StandCount):
+            {
+                u16 stand_count @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgLeftPco):
+            {
+                s8 avg_left_pco @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgRightPco):
+            {
+                s8 avg_right_pco @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgLeftPowerPhase):
+            {
+                u8 avg_left_power_phase @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgLeftPowerPhasePeak):
+            {
+                u8 avg_left_power_phase_peak @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgRightPowerPhase):
+            {
+                u8 avg_right_power_phase @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgRightPowerPhasePeak):
+            {
+                u8 avg_right_power_phase_peak @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgPowerPosition):
+            {
+                u16 avg_power_position @ p;
+            }
+            
+            (SessionFieldDefinitionType::MaxPowerPosition):
+            {
+                u16 max_power_position @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgCadencePosition):
+            {
+                u8 avg_cadence_position @ p;
+            }
+            
+            (SessionFieldDefinitionType::MaxCadencePosition):
+            {
+                u8 max_cadence_position @ p;
+            }
+            
+            (SessionFieldDefinitionType::EnhancedAvgSpeed):
+            {
+                u32 enhanced_avg_speed @ p;
+            }
+            
+            (SessionFieldDefinitionType::EnhancedMaxSpeed):
+            {
+                u32 enhanced_max_speed @ p;
+            }
+            
+            (SessionFieldDefinitionType::EnhancedAvgAltitude):
+            {
+                u32 enhanced_avg_altitude @ p;
+            }
+            
+            (SessionFieldDefinitionType::EnhancedMinAltitude):
+            {
+                u32 enhanced_min_altitude @ p;
+            }
+            
+            (SessionFieldDefinitionType::EnhancedMaxAltitude):
+            {
+                u32 enhanced_max_altitude @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgLevMotorPower):
+            {
+                u16 avg_lev_motor_power @ p;
+            }
+            
+            (SessionFieldDefinitionType::MaxLevMotorPower):
+            {
+                u16 max_lev_motor_power @ p;
+            }
+            
+            (SessionFieldDefinitionType::LevBatteryConsumption):
+            {
+                u8 lev_battery_consumption @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgVerticalRatio):
+            {
+                u16 avg_vertical_ratio @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgStanceTimeBalance):
+            {
+                u16 avg_stance_time_balance @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgStepLength):
+            {
+                u16 avg_step_length @ p;
+            }
+            
+            (SessionFieldDefinitionType::TotalAnaerobicTrainingEffect):
+            {
+                u8 total_anaerobic_training_effect @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgVam):
+            {
+                u16 avg_vam @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgDepth):
+            {
+                u32 avg_depth @ p;
+            }
+            
+            (SessionFieldDefinitionType::MaxDepth):
+            {
+                u32 max_depth @ p;
+            }
+            
+            (SessionFieldDefinitionType::SurfaceInterval):
+            {
+                u32 surface_interval @ p;
+            }
+            
+            (SessionFieldDefinitionType::StartCns):
+            {
+                u8 start_cns @ p;
+            }
+            
+            (SessionFieldDefinitionType::EndCns):
+            {
+                u8 end_cns @ p;
+            }
+            
+            (SessionFieldDefinitionType::StartN2):
+            {
+                u16 start_n2 @ p;
+            }
+            
+            (SessionFieldDefinitionType::EndN2):
+            {
+                u16 end_n2 @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgRespirationRate):
+            {
+                u8 avg_respiration_rate @ p;
+            }
+            
+            (SessionFieldDefinitionType::MaxRespirationRate):
+            {
+                u8 max_respiration_rate @ p;
+            }
+            
+            (SessionFieldDefinitionType::MinRespirationRate):
+            {
+                u8 min_respiration_rate @ p;
+            }
+            
+            (SessionFieldDefinitionType::MinTemperature):
+            {
+                s8 min_temperature @ p;
+            }
+            
+            (SessionFieldDefinitionType::O2Toxicity):
+            {
+                u16 o2_toxicity @ p;
+            }
+            
+            (SessionFieldDefinitionType::DiveNumber):
+            {
+                u32 dive_number @ p;
+            }
+            
+            (SessionFieldDefinitionType::TrainingLoadPeak):
+            {
+                s32 training_load_peak @ p;
+            }
+            
+            (SessionFieldDefinitionType::EnhancedAvgRespirationRate):
+            {
+                u16 enhanced_avg_respiration_rate @ p;
+            }
+            
+            (SessionFieldDefinitionType::EnhancedMaxRespirationRate):
+            {
+                u16 enhanced_max_respiration_rate @ p;
+            }
+            
+            (SessionFieldDefinitionType::EnhancedMinRespirationRate):
+            {
+                u16 enhanced_min_respiration_rate @ p;
+            }
+            
+            (SessionFieldDefinitionType::TotalGrit):
+            {
+                float total_grit @ p;
+            }
+            
+            (SessionFieldDefinitionType::TotalFlow):
+            {
+                float total_flow @ p;
+            }
+            
+            (SessionFieldDefinitionType::JumpCount):
+            {
+                u16 jump_count @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgGrit):
+            {
+                float avg_grit @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgFlow):
+            {
+                float avg_flow @ p;
+            }
+            
+            (SessionFieldDefinitionType::WorkoutFeel):
+            {
+                u8 workout_feel @ p;
+            }
+            
+            (SessionFieldDefinitionType::WorkoutRpe):
+            {
+                u8 workout_rpe @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgSpo2):
+            {
+                u8 avg_spo2 @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgStress):
+            {
+                u8 avg_stress @ p;
+            }
+            
+            (SessionFieldDefinitionType::MetabolicCalories):
+            {
+                u16 metabolic_calories @ p;
+            }
+            
+            (SessionFieldDefinitionType::SdrrHrv):
+            {
+                u8 sdrr_hrv @ p;
+            }
+            
+            (SessionFieldDefinitionType::RmssdHrv):
+            {
+                u8 rmssd_hrv @ p;
+            }
+            
+            (SessionFieldDefinitionType::TotalFractionalAscent):
+            {
+                u8 total_fractional_ascent @ p;
+            }
+            
+            (SessionFieldDefinitionType::TotalFractionalDescent):
+            {
+                u8 total_fractional_descent @ p;
+            }
+            
+            (SessionFieldDefinitionType::AvgCoreTemperature):
+            {
+                u16 avg_core_temperature @ p;
+            }
+            
+            (SessionFieldDefinitionType::MinCoreTemperature):
+            {
+                u16 min_core_temperature @ p;
+            }
+            
+            (SessionFieldDefinitionType::MaxCoreTemperature):
+            {
+                u16 max_core_temperature @ p;
+            }
         }
     }
+    catch{
+        u8 uknown[s] @ p;
+    }
     $ += s;
+#ifdef DEBUG_MODE
+    std::print(std::format("SessionField: Bumped $ to {:X}", $));
+#endif
 };
 
 struct LapField
@@ -2452,502 +2463,515 @@ struct LapField
     auto i = std::core::array_index();
     auto s = scratch_defs[i].size;
     auto p = $;
-    match (scratch_defs[i].field_definition_num) 
+    u8 fdn = u8(scratch_defs[i].field_definition_num);
+#ifdef DEBUG_MODE
+    std::print(std::format("LapField: FDN:{} Index:{},Size:{},Pointer:{:X} ", fdn, i, s, p));
+#endif
+    try
     {
-        (LapFieldDefinitionType::Event):
-        {
-            Event event @ p;
-        }
-        (LapFieldDefinitionType::EventType):
-        {
-            EventType event_type @ p;
-        }
-        (LapFieldDefinitionType::StartTime):
-        {
-            DateTime start_time @ p[[format("format_datetime")]];
-        }
-        (LapFieldDefinitionType::StartPositionLat):
-        {
-            s32 start_position_lat @ p;
-        }
-        (LapFieldDefinitionType::StartPositionLong):
-        {
-            s32 start_position_long @ p;
-        }
-        (LapFieldDefinitionType::EndPositionLat):
-        {
-            s32 end_position_lat @ p;
-        }
-        (LapFieldDefinitionType::EndPositionLong):
-        {
-            s32 end_position_long @ p;
-        }
-        (LapFieldDefinitionType::TotalElapsedTime):
-        {
-            u32 total_elapsed_time @ p;
-        }
-        (LapFieldDefinitionType::TotalTimerTime):
-        {
-            u32 total_timer_time @ p;
-        }
-        (LapFieldDefinitionType::TotalDistance):
-        {
-            u32 total_distance @ p;
-        }
-        (LapFieldDefinitionType::TotalCycles):
-        {
-            u32 total_cycles @ p;
-        }
-        (LapFieldDefinitionType::TotalCalories):
-        {
-            u16 total_calories @ p;
-        }
-        (LapFieldDefinitionType::TotalFatCalories):
-        {
-            u16 total_fat_calories @ p;
-        }
-        (LapFieldDefinitionType::AvgSpeed):
-        {
-            u16 avg_speed @ p;
-        }
-        (LapFieldDefinitionType::MaxSpeed):
-        {
-            u16 max_speed @ p;
-        }
-        (LapFieldDefinitionType::AvgHeartRate):
-        {
-            u8 avg_heart_rate @ p;
-        }
-        (LapFieldDefinitionType::MaxHeartRate):
-        {
-            u8 max_heart_rate @ p;
-        }
-        (LapFieldDefinitionType::AvgCadence):
-        {
-            u8 avg_cadence @ p;
-        }
-        (LapFieldDefinitionType::MaxCadence):
-        {
-            u8 max_cadence @ p;
-        }
-        (LapFieldDefinitionType::AvgPower):
-        {
-            u16 avg_power @ p;
-        }
-        (LapFieldDefinitionType::MaxPower):
-        {
-            u16 max_power @ p;
-        }
-        (LapFieldDefinitionType::TotalAscent):
-        {
-            u16 total_ascent @ p;
-        }
-        (LapFieldDefinitionType::TotalDescent):
-        {
-            u16 total_descent @ p;
-        }
-        (LapFieldDefinitionType::Intensity):
-        {
-            IntensityType intensity @ p;
-        }
-        (LapFieldDefinitionType::LapTrigger):
-        {
-            LapTriggerType lap_trigger @ p;
-        }
-        (LapFieldDefinitionType::Sport):
-        {
-            SportType sport @ p;
-        }
-        (LapFieldDefinitionType::EventGroup):
-        {
-            u8 event_group @ p;
-        }
-        (LapFieldDefinitionType::NumLengths):
-        {
-            u16 num_lengths @ p;
-        }
-        (LapFieldDefinitionType::NormalizedPower):
-        {
-            u16 normalized_power @ p;
-        }
-        (LapFieldDefinitionType::LeftRightBalance):
-        {
-            LeftRightBalance100Type left_right_balance @ p;
-        }
-        (LapFieldDefinitionType::FirstLengthIndex):
-        {
-            u16 first_length_index @ p;
-        }
-        (LapFieldDefinitionType::AvgStrokeDistance):
-        {
-            u16 avg_stroke_distance @ p;
-        }
-        (LapFieldDefinitionType::SwimStroke):
-        {
-            SwimStrokeType swim_stroke @ p;
-        }
-        (LapFieldDefinitionType::SubSport):
-        {
-            SubSportType sub_sport @ p;
-        }
-        (LapFieldDefinitionType::NumActiveLengths):
-        {
-            u16 num_active_lengths @ p;
-        }
-        (LapFieldDefinitionType::TotalWork):
-        {
-            u32 total_work @ p;
-        }
-        (LapFieldDefinitionType::AvgAltitude):
-        {
-            u16 avg_altitude @ p;
-        }
-        (LapFieldDefinitionType::MaxAltitude):
-        {
-            u16 max_altitude @ p;
-        }
-        (LapFieldDefinitionType::GpsAccuracy):
-        {
-            u8 gps_accuracy @ p;
-        }
-        (LapFieldDefinitionType::AvgGrade):
-        {
-            s16 avg_grade @ p;
-        }
-        (LapFieldDefinitionType::AvgPosGrade):
-        {
-            s16 avg_pos_grade @ p;
-        }
-        (LapFieldDefinitionType::AvgNegGrade):
-        {
-            s16 avg_neg_grade @ p;
-        }
-        (LapFieldDefinitionType::MaxPosGrade):
-        {
-            s16 max_pos_grade @ p;
-        }
-        (LapFieldDefinitionType::MaxNegGrade):
-        {
-            s16 max_neg_grade @ p;
-        }
-        (LapFieldDefinitionType::AvgTemperature):
-        {
-            s8 avg_temperature @ p;
-        }
-        (LapFieldDefinitionType::MaxTemperature):
-        {
-            s8 max_temperature @ p;
-        }
-        (LapFieldDefinitionType::TotalMovingTime):
-        {
-            u32 total_moving_time @ p;
-        }
-        (LapFieldDefinitionType::AvgPosVerticalSpeed):
-        {
-            s16 avg_pos_vertical_speed @ p;
-        }
-        (LapFieldDefinitionType::AvgNegVerticalSpeed):
-        {
-            s16 avg_neg_vertical_speed @ p;
-        }
-        (LapFieldDefinitionType::MaxPosVerticalSpeed):
-        {
-            s16 max_pos_vertical_speed @ p;
-        }
-        (LapFieldDefinitionType::MaxNegVerticalSpeed):
-        {
-            s16 max_neg_vertical_speed @ p;
-        }
-        (LapFieldDefinitionType::TimeInHrZone):
-        {
-            u32 time_in_hr_zone @ p;
-        }
-        (LapFieldDefinitionType::TimeInSpeedZone):
-        {
-            u32 time_in_speed_zone @ p;
-        }
-        (LapFieldDefinitionType::TimeInCadenceZone):
-        {
-            u32 time_in_cadence_zone @ p;
-        }
-        (LapFieldDefinitionType::TimeInPowerZone):
-        {
-            u32 time_in_power_zone @ p;
-        }
-        (LapFieldDefinitionType::RepetitionNum):
-        {
-            u16 repetition_num @ p;
-        }
-        (LapFieldDefinitionType::MinAltitude):
-        {
-            u16 min_altitude @ p;
-        }
-        (LapFieldDefinitionType::MinHeartRate):
-        {
-            u8 min_heart_rate @ p;
-        }
-        (LapFieldDefinitionType::WktStepIndex):
-        {
-            MessageIndexType wkt_step_index @ p;
-        }
-        (LapFieldDefinitionType::OpponentScore):
-        {
-            u16 opponent_score @ p;
-        }
-        (LapFieldDefinitionType::StrokeCount):
-        {
-            u16 stroke_count @ p;
-        }
-        (LapFieldDefinitionType::ZoneCount):
-        {
-            u16 zone_count @ p;
-        }
-        (LapFieldDefinitionType::AvgVerticalOscillation):
-        {
-            u16 avg_vertical_oscillation @ p;
-        }
-        (LapFieldDefinitionType::AvgStanceTimePercent):
-        {
-            u16 avg_stance_time_percent @ p;
-        }
-        (LapFieldDefinitionType::AvgStanceTime):
-        {
-            u16 avg_stance_time @ p;
-        }
-        (LapFieldDefinitionType::AvgFractionalCadence):
-        {
-            u8 avg_fractional_cadence @ p;
-        }
-        (LapFieldDefinitionType::MaxFractionalCadence):
-        {
-            u8 max_fractional_cadence @ p;
-        }
-        (LapFieldDefinitionType::TotalFractionalCycles):
-        {
-            u8 total_fractional_cycles @ p;
-        }
-        (LapFieldDefinitionType::PlayerScore):
-        {
-            u16 player_score @ p;
-        }
-        (LapFieldDefinitionType::AvgTotalHemoglobinConc):
-        {
-            u16 avg_total_hemoglobin_conc @ p;
-        }
-        (LapFieldDefinitionType::MinTotalHemoglobinConc):
-        {
-            u16 min_total_hemoglobin_conc @ p;
-        }
-        (LapFieldDefinitionType::MaxTotalHemoglobinConc):
-        {
-            u16 max_total_hemoglobin_conc @ p;
-        }
-        (LapFieldDefinitionType::AvgSaturatedHemoglobinPercent):
-        {
-            u16 avg_saturated_hemoglobin_percent @ p;
-        }
-        (LapFieldDefinitionType::MinSaturatedHemoglobinPercent):
-        {
-            u16 min_saturated_hemoglobin_percent @ p;
-        }
-        (LapFieldDefinitionType::MaxSaturatedHemoglobinPercent):
-        {
-            u16 max_saturated_hemoglobin_percent @ p;
-        }
-        (LapFieldDefinitionType::AvgLeftTorqueEffectiveness):
-        {
-            u8 avg_left_torque_effectiveness @ p;
-        }
-        (LapFieldDefinitionType::AvgRightTorqueEffectiveness):
-        {
-            u8 avg_right_torque_effectiveness @ p;
-        }
-        (LapFieldDefinitionType::AvgLeftPedalSmoothness):
-        {
-            u8 avg_left_pedal_smoothness @ p;
-        }
-        (LapFieldDefinitionType::AvgRightPedalSmoothness):
-        {
-            u8 avg_right_pedal_smoothness @ p;
-        }
-        (LapFieldDefinitionType::AvgCombinedPedalSmoothness):
-        {
-            u8 avg_combined_pedal_smoothness @ p;
-        }
-        (LapFieldDefinitionType::TimeStanding):
-        {
-            u32 time_standing @ p;
-        }
-        (LapFieldDefinitionType::StandCount):
-        {
-            u16 stand_count @ p;
-        }
-        (LapFieldDefinitionType::AvgLeftPco):
-        {
-            s8 avg_left_pco @ p;
-        }
-        (LapFieldDefinitionType::AvgRightPco):
-        {
-            s8 avg_right_pco @ p;
-        }
-        (LapFieldDefinitionType::AvgLeftPowerPhase):
-        {
-            u8 avg_left_power_phase @ p;
-        }
-        (LapFieldDefinitionType::AvgLeftPowerPhasePeak):
-        {
-            u8 avg_left_power_phase_peak @ p;
-        }
-        (LapFieldDefinitionType::AvgRightPowerPhase):
-        {
-            u8 avg_right_power_phase @ p;
-        }
-        (LapFieldDefinitionType::AvgRightPowerPhasePeak):
-        {
-            u8 avg_right_power_phase_peak @ p;
-        }
-        (LapFieldDefinitionType::AvgPowerPosition):
-        {
-            u16 avg_power_position @ p;
-        }
-        (LapFieldDefinitionType::MaxPowerPosition):
-        {
-            u16 max_power_position @ p;
-        }
-        (LapFieldDefinitionType::AvgCadencePosition):
-        {
-            u8 avg_cadence_position @ p;
-        }
-        (LapFieldDefinitionType::MaxCadencePosition):
-        {
-            u8 max_cadence_position @ p;
-        }
-        (LapFieldDefinitionType::EnhancedAvgSpeed):
-        {
-            u32 enhanced_avg_speed @ p;
-        }
-        (LapFieldDefinitionType::EnhancedMaxSpeed):
-        {
-            u32 enhanced_max_speed @ p;
-        }
-        (LapFieldDefinitionType::EnhancedAvgAltitude):
-        {
-            u32 enhanced_avg_altitude @ p;
-        }
-        (LapFieldDefinitionType::EnhancedMinAltitude):
-        {
-            u32 enhanced_min_altitude @ p;
-        }
-        (LapFieldDefinitionType::EnhancedMaxAltitude):
-        {
-            u32 enhanced_max_altitude @ p;
-        }
-        (LapFieldDefinitionType::AvgLevMotorPower):
-        {
-            u16 avg_lev_motor_power @ p;
-        }
-        (LapFieldDefinitionType::MaxLevMotorPower):
-        {
-            u16 max_lev_motor_power @ p;
-        }
-        (LapFieldDefinitionType::LevBatteryConsumption):
-        {
-            u8 lev_battery_consumption @ p;
-        }
-        (LapFieldDefinitionType::AvgVerticalRatio):
-        {
-            u16 avg_vertical_ratio @ p;
-        }
-        (LapFieldDefinitionType::AvgStanceTimeBalance):
-        {
-            u16 avg_stance_time_balance @ p;
-        }
-        (LapFieldDefinitionType::AvgStepLength):
-        {
-            u16 avg_step_length @ p;
-        }
-        (LapFieldDefinitionType::AvgVam):
-        {
-            u16 avg_vam @ p;
-        }
-        (LapFieldDefinitionType::AvgDepth):
-        {
-            u32 avg_depth @ p;
-        }
-        (LapFieldDefinitionType::MaxDepth):
-        {
-            u32 max_depth @ p;
-        }
-        (LapFieldDefinitionType::MinTemperature):
-        {
-            s8 min_temperature @ p;
-        }
-        (LapFieldDefinitionType::EnhancedAvgRespirationRate):
-        {
-            u16 enhanced_avg_respiration_rate @ p;
-        }
-        (LapFieldDefinitionType::EnhancedMaxRespirationRate):
-        {
-            u16 enhanced_max_respiration_rate @ p;
-        }
-        (LapFieldDefinitionType::AvgRespirationRate):
-        {
-            u8 avg_respiration_rate @ p;
-        }
-        (LapFieldDefinitionType::MaxRespirationRate):
-        {
-            u8 max_respiration_rate @ p;
-        }
-        (LapFieldDefinitionType::TotalGrit):
-        {
-            float total_grit @ p;
-        }
-        (LapFieldDefinitionType::TotalFlow):
-        {
-            float total_flow @ p;
-        }
-        (LapFieldDefinitionType::JumpCount):
-        {
-            u16 jump_count @ p;
-        }
-        (LapFieldDefinitionType::AvgGrit):
-        {
-            float avg_grit @ p;
-        }
-        (LapFieldDefinitionType::AvgFlow):
-        {
-            float avg_flow @ p;
-        }
-        (LapFieldDefinitionType::TotalFractionalAscent):
-        {
-            u8 total_fractional_ascent @ p;
-        }
-        (LapFieldDefinitionType::TotalFractionalDescent):
-        {
-            u8 total_fractional_descent @ p;
-        }
-        (LapFieldDefinitionType::AvgCoreTemperature):
-        {
-            u16 avg_core_temperature @ p;
-        }
-        (LapFieldDefinitionType::MinCoreTemperature):
-        {
-            u16 min_core_temperature @ p;
-        }
-        (LapFieldDefinitionType::MaxCoreTemperature):
-        {
-            u16 max_core_temperature @ p;
-        }
-        (LapFieldDefinitionType::Timestamp):
-        {
-            DateTime timestamp @ p[[format("format_datetime")]];
-        }
-        (LapFieldDefinitionType::MessageIndex):
-        {
-            MessageIndexType message_index @ p;
+        match (fdn) 
+        {
+            (LapFieldDefinitionType::Event):
+            {
+                Event event @ p;
+            }
+            (LapFieldDefinitionType::EventType):
+            {
+                EventType event_type @ p;
+            }
+            (LapFieldDefinitionType::StartTime):
+            {
+                DateTime start_time @ p [[format("format_datetime")]];
+            }
+            (LapFieldDefinitionType::StartPositionLat):
+            {
+                s32 start_position_lat @ p [[format("format_lat")]];
+            }
+            (LapFieldDefinitionType::StartPositionLong):
+            {
+                s32 start_position_long @ p [[format("format_long")]];
+            }
+            (LapFieldDefinitionType::EndPositionLat):
+            {
+                s32 end_position_lat @ p [[format("format_lat")]];
+            }
+            (LapFieldDefinitionType::EndPositionLong):
+            {
+                s32 end_position_long @ p [[format("format_long")]];
+            }
+            (LapFieldDefinitionType::TotalElapsedTime):
+            {
+                u32 total_elapsed_time @ p;
+            }
+            (LapFieldDefinitionType::TotalTimerTime):
+            {
+                u32 total_timer_time @ p;
+            }
+            (LapFieldDefinitionType::TotalDistance):
+            {
+                u32 total_distance @ p;
+            }
+            (LapFieldDefinitionType::TotalCycles):
+            {
+                u32 total_cycles @ p;
+            }
+            (LapFieldDefinitionType::TotalCalories):
+            {
+                u16 total_calories @ p;
+            }
+            (LapFieldDefinitionType::TotalFatCalories):
+            {
+                u16 total_fat_calories @ p;
+            }
+            (LapFieldDefinitionType::AvgSpeed):
+            {
+                u16 avg_speed @ p;
+            }
+            (LapFieldDefinitionType::MaxSpeed):
+            {
+                u16 max_speed @ p;
+            }
+            (LapFieldDefinitionType::AvgHeartRate):
+            {
+                u8 avg_heart_rate @ p;
+            }
+            (LapFieldDefinitionType::MaxHeartRate):
+            {
+                u8 max_heart_rate @ p;
+            }
+            (LapFieldDefinitionType::AvgCadence):
+            {
+                u8 avg_cadence @ p;
+            }
+            (LapFieldDefinitionType::MaxCadence):
+            {
+                u8 max_cadence @ p;
+            }
+            (LapFieldDefinitionType::AvgPower):
+            {
+                u16 avg_power @ p;
+            }
+            (LapFieldDefinitionType::MaxPower):
+            {
+                u16 max_power @ p;
+            }
+            (LapFieldDefinitionType::TotalAscent):
+            {
+                u16 total_ascent @ p;
+            }
+            (LapFieldDefinitionType::TotalDescent):
+            {
+                u16 total_descent @ p;
+            }
+            (LapFieldDefinitionType::Intensity):
+            {
+                IntensityType intensity @ p;
+            }
+            (LapFieldDefinitionType::LapTrigger):
+            {
+                LapTriggerType lap_trigger @ p;
+            }
+            (LapFieldDefinitionType::Sport):
+            {
+                SportType sport @ p;
+            }
+            (LapFieldDefinitionType::EventGroup):
+            {
+                u8 event_group @ p;
+            }
+            (LapFieldDefinitionType::NumLengths):
+            {
+                u16 num_lengths @ p;
+            }
+            (LapFieldDefinitionType::NormalizedPower):
+            {
+                u16 normalized_power @ p;
+            }
+            (LapFieldDefinitionType::LeftRightBalance):
+            {
+                LeftRightBalance100Type left_right_balance @ p;
+            }
+            (LapFieldDefinitionType::FirstLengthIndex):
+            {
+                u16 first_length_index @ p;
+            }
+            (LapFieldDefinitionType::AvgStrokeDistance):
+            {
+                u16 avg_stroke_distance @ p;
+            }
+            (LapFieldDefinitionType::SwimStroke):
+            {
+                SwimStrokeType swim_stroke @ p;
+            }
+            (LapFieldDefinitionType::SubSport):
+            {
+                SubSportType sub_sport @ p;
+            }
+            (LapFieldDefinitionType::NumActiveLengths):
+            {
+                u16 num_active_lengths @ p;
+            }
+            (LapFieldDefinitionType::TotalWork):
+            {
+                u32 total_work @ p;
+            }
+            (LapFieldDefinitionType::AvgAltitude):
+            {
+                u16 avg_altitude @ p;
+            }
+            (LapFieldDefinitionType::MaxAltitude):
+            {
+                u16 max_altitude @ p;
+            }
+            (LapFieldDefinitionType::GpsAccuracy):
+            {
+                u8 gps_accuracy @ p;
+            }
+            (LapFieldDefinitionType::AvgGrade):
+            {
+                s16 avg_grade @ p;
+            }
+            (LapFieldDefinitionType::AvgPosGrade):
+            {
+                s16 avg_pos_grade @ p;
+            }
+            (LapFieldDefinitionType::AvgNegGrade):
+            {
+                s16 avg_neg_grade @ p;
+            }
+            (LapFieldDefinitionType::MaxPosGrade):
+            {
+                s16 max_pos_grade @ p;
+            }
+            (LapFieldDefinitionType::MaxNegGrade):
+            {
+                s16 max_neg_grade @ p;
+            }
+            (LapFieldDefinitionType::AvgTemperature):
+            {
+                s8 avg_temperature @ p;
+            }
+            (LapFieldDefinitionType::MaxTemperature):
+            {
+                s8 max_temperature @ p;
+            }
+            (LapFieldDefinitionType::TotalMovingTime):
+            {
+                u32 total_moving_time @ p;
+            }
+            (LapFieldDefinitionType::AvgPosVerticalSpeed):
+            {
+                s16 avg_pos_vertical_speed @ p;
+            }
+            (LapFieldDefinitionType::AvgNegVerticalSpeed):
+            {
+                s16 avg_neg_vertical_speed @ p;
+            }
+            (LapFieldDefinitionType::MaxPosVerticalSpeed):
+            {
+                s16 max_pos_vertical_speed @ p;
+            }
+            (LapFieldDefinitionType::MaxNegVerticalSpeed):
+            {
+                s16 max_neg_vertical_speed @ p;
+            }
+            (LapFieldDefinitionType::TimeInHrZone):
+            {
+                u32 time_in_hr_zone @ p;
+            }
+            (LapFieldDefinitionType::TimeInSpeedZone):
+            {
+                u32 time_in_speed_zone @ p;
+            }
+            (LapFieldDefinitionType::TimeInCadenceZone):
+            {
+                u32 time_in_cadence_zone @ p;
+            }
+            (LapFieldDefinitionType::TimeInPowerZone):
+            {
+                u32 time_in_power_zone @ p;
+            }
+            (LapFieldDefinitionType::RepetitionNum):
+            {
+                u16 repetition_num @ p;
+            }
+            (LapFieldDefinitionType::MinAltitude):
+            {
+                u16 min_altitude @ p;
+            }
+            (LapFieldDefinitionType::MinHeartRate):
+            {
+                u8 min_heart_rate @ p;
+            }
+            (LapFieldDefinitionType::WktStepIndex):
+            {
+                MessageIndexType wkt_step_index @ p;
+            }
+            (LapFieldDefinitionType::OpponentScore):
+            {
+                u16 opponent_score @ p;
+            }
+            (LapFieldDefinitionType::StrokeCount):
+            {
+                u16 stroke_count @ p;
+            }
+            (LapFieldDefinitionType::ZoneCount):
+            {
+                u16 zone_count @ p;
+            }
+            (LapFieldDefinitionType::AvgVerticalOscillation):
+            {
+                u16 avg_vertical_oscillation @ p;
+            }
+            (LapFieldDefinitionType::AvgStanceTimePercent):
+            {
+                u16 avg_stance_time_percent @ p;
+            }
+            (LapFieldDefinitionType::AvgStanceTime):
+            {
+                u16 avg_stance_time @ p;
+            }
+            (LapFieldDefinitionType::AvgFractionalCadence):
+            {
+                u8 avg_fractional_cadence @ p;
+            }
+            (LapFieldDefinitionType::MaxFractionalCadence):
+            {
+                u8 max_fractional_cadence @ p;
+            }
+            (LapFieldDefinitionType::TotalFractionalCycles):
+            {
+                u8 total_fractional_cycles @ p;
+            }
+            (LapFieldDefinitionType::PlayerScore):
+            {
+                u16 player_score @ p;
+            }
+            (LapFieldDefinitionType::AvgTotalHemoglobinConc):
+            {
+                u16 avg_total_hemoglobin_conc @ p;
+            }
+            (LapFieldDefinitionType::MinTotalHemoglobinConc):
+            {
+                u16 min_total_hemoglobin_conc @ p;
+            }
+            (LapFieldDefinitionType::MaxTotalHemoglobinConc):
+            {
+                u16 max_total_hemoglobin_conc @ p;
+            }
+            (LapFieldDefinitionType::AvgSaturatedHemoglobinPercent):
+            {
+                u16 avg_saturated_hemoglobin_percent @ p;
+            }
+            (LapFieldDefinitionType::MinSaturatedHemoglobinPercent):
+            {
+                u16 min_saturated_hemoglobin_percent @ p;
+            }
+            (LapFieldDefinitionType::MaxSaturatedHemoglobinPercent):
+            {
+                u16 max_saturated_hemoglobin_percent @ p;
+            }
+            (LapFieldDefinitionType::AvgLeftTorqueEffectiveness):
+            {
+                u8 avg_left_torque_effectiveness @ p;
+            }
+            (LapFieldDefinitionType::AvgRightTorqueEffectiveness):
+            {
+                u8 avg_right_torque_effectiveness @ p;
+            }
+            (LapFieldDefinitionType::AvgLeftPedalSmoothness):
+            {
+                u8 avg_left_pedal_smoothness @ p;
+            }
+            (LapFieldDefinitionType::AvgRightPedalSmoothness):
+            {
+                u8 avg_right_pedal_smoothness @ p;
+            }
+            (LapFieldDefinitionType::AvgCombinedPedalSmoothness):
+            {
+                u8 avg_combined_pedal_smoothness @ p;
+            }
+            (LapFieldDefinitionType::TimeStanding):
+            {
+                u32 time_standing @ p;
+            }
+            (LapFieldDefinitionType::StandCount):
+            {
+                u16 stand_count @ p;
+            }
+            (LapFieldDefinitionType::AvgLeftPco):
+            {
+                s8 avg_left_pco @ p;
+            }
+            (LapFieldDefinitionType::AvgRightPco):
+            {
+                s8 avg_right_pco @ p;
+            }
+            (LapFieldDefinitionType::AvgLeftPowerPhase):
+            {
+                u8 avg_left_power_phase @ p;
+            }
+            (LapFieldDefinitionType::AvgLeftPowerPhasePeak):
+            {
+                u8 avg_left_power_phase_peak @ p;
+            }
+            (LapFieldDefinitionType::AvgRightPowerPhase):
+            {
+                u8 avg_right_power_phase @ p;
+            }
+            (LapFieldDefinitionType::AvgRightPowerPhasePeak):
+            {
+                u8 avg_right_power_phase_peak @ p;
+            }
+            (LapFieldDefinitionType::AvgPowerPosition):
+            {
+                u16 avg_power_position @ p;
+            }
+            (LapFieldDefinitionType::MaxPowerPosition):
+            {
+                u16 max_power_position @ p;
+            }
+            (LapFieldDefinitionType::AvgCadencePosition):
+            {
+                u8 avg_cadence_position @ p;
+            }
+            (LapFieldDefinitionType::MaxCadencePosition):
+            {
+                u8 max_cadence_position @ p;
+            }
+            (LapFieldDefinitionType::EnhancedAvgSpeed):
+            {
+                u32 enhanced_avg_speed @ p;
+            }
+            (LapFieldDefinitionType::EnhancedMaxSpeed):
+            {
+                u32 enhanced_max_speed @ p;
+            }
+            (LapFieldDefinitionType::EnhancedAvgAltitude):
+            {
+                u32 enhanced_avg_altitude @ p;
+            }
+            (LapFieldDefinitionType::EnhancedMinAltitude):
+            {
+                u32 enhanced_min_altitude @ p;
+            }
+            (LapFieldDefinitionType::EnhancedMaxAltitude):
+            {
+                u32 enhanced_max_altitude @ p;
+            }
+            (LapFieldDefinitionType::AvgLevMotorPower):
+            {
+                u16 avg_lev_motor_power @ p;
+            }
+            (LapFieldDefinitionType::MaxLevMotorPower):
+            {
+                u16 max_lev_motor_power @ p;
+            }
+            (LapFieldDefinitionType::LevBatteryConsumption):
+            {
+                u8 lev_battery_consumption @ p;
+            }
+            (LapFieldDefinitionType::AvgVerticalRatio):
+            {
+                u16 avg_vertical_ratio @ p;
+            }
+            (LapFieldDefinitionType::AvgStanceTimeBalance):
+            {
+                u16 avg_stance_time_balance @ p;
+            }
+            (LapFieldDefinitionType::AvgStepLength):
+            {
+                u16 avg_step_length @ p;
+            }
+            (LapFieldDefinitionType::AvgVam):
+            {
+                u16 avg_vam @ p;
+            }
+            (LapFieldDefinitionType::AvgDepth):
+            {
+                u32 avg_depth @ p;
+            }
+            (LapFieldDefinitionType::MaxDepth):
+            {
+                u32 max_depth @ p;
+            }
+            (LapFieldDefinitionType::MinTemperature):
+            {
+                s8 min_temperature @ p;
+            }
+            (LapFieldDefinitionType::EnhancedAvgRespirationRate):
+            {
+                u16 enhanced_avg_respiration_rate @ p;
+            }
+            (LapFieldDefinitionType::EnhancedMaxRespirationRate):
+            {
+                u16 enhanced_max_respiration_rate @ p;
+            }
+            (LapFieldDefinitionType::AvgRespirationRate):
+            {
+                u8 avg_respiration_rate @ p;
+            }
+            (LapFieldDefinitionType::MaxRespirationRate):
+            {
+                u8 max_respiration_rate @ p;
+            }
+            (LapFieldDefinitionType::TotalGrit):
+            {
+                float total_grit @ p;
+            }
+            (LapFieldDefinitionType::TotalFlow):
+            {
+                float total_flow @ p;
+            }
+            (LapFieldDefinitionType::JumpCount):
+            {
+                u16 jump_count @ p;
+            }
+            (LapFieldDefinitionType::AvgGrit):
+            {
+                float avg_grit @ p;
+            }
+            (LapFieldDefinitionType::AvgFlow):
+            {
+                float avg_flow @ p;
+            }
+            (LapFieldDefinitionType::TotalFractionalAscent):
+            {
+                u8 total_fractional_ascent @ p;
+            }
+            (LapFieldDefinitionType::TotalFractionalDescent):
+            {
+                u8 total_fractional_descent @ p;
+            }
+            (LapFieldDefinitionType::AvgCoreTemperature):
+            {
+                u16 avg_core_temperature @ p;
+            }
+            (LapFieldDefinitionType::MinCoreTemperature):
+            {
+                u16 min_core_temperature @ p;
+            }
+            (LapFieldDefinitionType::MaxCoreTemperature):
+            {
+                u16 max_core_temperature @ p;
+            }
+            (LapFieldDefinitionType::Timestamp):
+            {
+                DateTime timestamp @ p [[format("format_datetime")]];
+            }
+            (LapFieldDefinitionType::MessageIndex):
+            {
+                MessageIndexType message_index @ p;
+            }
         }
     }
+    catch{
+        u8 uknown[s] @ p;
+    }
     $ += s;
+#ifdef DEBUG_MODE
+    std::print(std::format("LapField: Bumped $ to {:X}", $));
+#endif
 };
 
 fn format_distance(u32 dist) 
@@ -2959,351 +2983,376 @@ fn format_distance(u32 dist)
     return std::format("{:.2}km ({}m)", trunc_km, scaled);
 };
 
+fn format_lat(auto lat)
+{
+    float real_lat = float(lat) / s32(11930465);
+    return std::format("Lat: N {}", real_lat);
+};
+
+fn format_long(auto long)
+{
+    float real_long = float(long) / s32(11930465);
+    return std::format("Long: E {}", real_long);
+};
+
 struct RecordField
 {
     auto i = std::core::array_index();
     auto s = scratch_defs[i].size;
     auto p = $;
-    match (scratch_defs[i].field_definition_num) 
+    u8 fdn = u8(scratch_defs[i].field_definition_num);
+#ifdef DEBUG_MODE
+    std::print(std::format("RecordField: FDN:{} Index:{},Size:{},Pointer:{:X} ", fdn, i, s, p));
+#endif
+    try
     {
-        (RecordFieldDefinitionType::PositionLat):
-        {
-            s32 position_lat @ p;
-        }
-        (RecordFieldDefinitionType::PositionLong):
-        {
-            s32 position_long @ p;
-        }
-        (RecordFieldDefinitionType::Altitude):
-        {
-            u16 altitude @ p;
-        }
-        (RecordFieldDefinitionType::HeartRate):
-        {
-            u8 heart_rate @ p;
-        }
-        (RecordFieldDefinitionType::Cadence):
-        {
-            u8 cadence @ p;
-        }
-        (RecordFieldDefinitionType::Distance):
-        {
-            u32 distance @ p [[format("format_distance")]];
-        }
-        (RecordFieldDefinitionType::Speed):
-        {
-            u16 speed @ p;
-        }
-        (RecordFieldDefinitionType::Power):
-        {
-            u16 power @ p;
-        }
-        (RecordFieldDefinitionType::CompressedSpeedDistance):
-        {
-            CompressedSpeedDistanceBitField compressed_speed_distance @ p [[bitfield_order(std::core::BitfieldOrder::MostToLeastSignificant, 12)]];;
-        }
-        (RecordFieldDefinitionType::Grade):
-        {
-            s16 grade @ p;
-        }
-        (RecordFieldDefinitionType::Resistance):
-        {
-            u8 resistance @ p;
-        }
-        (RecordFieldDefinitionType::TimeFromCourse):
-        {
-            s32 time_from_course @ p;
-        }
-        (RecordFieldDefinitionType::CycleLength):
-        {
-            u8 cycle_length @ p;
-        }
-        (RecordFieldDefinitionType::Temperature):
-        {
-            s8 temperature @ p;
-        }
-        (RecordFieldDefinitionType::Speed1s):
-        {
-            u8 speed_1s @ p;
-        }
-        (RecordFieldDefinitionType::Cycles):
-        {
-            u8 cycles @ p;
-        }
-        (RecordFieldDefinitionType::TotalCycles):
-        {
-            u32 total_cycles @ p;
-        }
-        (RecordFieldDefinitionType::CompressedAccumulatedPower):
-        {
-            u16 compressed_accumulated_power @ p;
-        }
-        (RecordFieldDefinitionType::AccumulatedPower):
-        {
-            u32 accumulated_power @ p;
-        }
-        (RecordFieldDefinitionType::LeftRightBalance):
-        {
-            LeftRightBalanceType left_right_balance @ p;
-        }
-        (RecordFieldDefinitionType::GpsAccuracy):
-        {
-            u8 gps_accuracy @ p;
-        }
-        (RecordFieldDefinitionType::VerticalSpeed):
-        {
-            s16 vertical_speed @ p;
-        }
-        (RecordFieldDefinitionType::Calories):
-        {
-            u16 calories @ p;
-        }
-        (RecordFieldDefinitionType::VerticalOscillation):
-        {
-            u16 vertical_oscillation @ p;
-        }
-        (RecordFieldDefinitionType::StanceTimePercent):
-        {
-            u16 stance_time_percent @ p;
-        }
-        (RecordFieldDefinitionType::StanceTime):
-        {
-            u16 stance_time @ p;
-        }
-        (RecordFieldDefinitionType::ActivityType):
-        {
-            ActivityType activity_type @ p;
-        }
-        (RecordFieldDefinitionType::LeftTorqueEffectiveness):
-        {
-            u8 left_torque_effectiveness @ p;
-        }
-        (RecordFieldDefinitionType::RightTorqueEffectiveness):
-        {
-            u8 right_torque_effectiveness @ p;
-        }
-        (RecordFieldDefinitionType::LeftPedalSmoothness):
-        {
-            u8 left_pedal_smoothness @ p;
-        }
-        (RecordFieldDefinitionType::RightPedalSmoothness):
-        {
-            u8 right_pedal_smoothness @ p;
-        }
-        (RecordFieldDefinitionType::CombinedPedalSmoothness):
-        {
-            u8 combined_pedal_smoothness @ p;
-        }
-        (RecordFieldDefinitionType::Time128):
-        {
-            u8 time128 @ p;
-        }
-        (RecordFieldDefinitionType::StrokeType):
-        {
-            StrokeType stroke_type @ p;
-        }
-        (RecordFieldDefinitionType::Zone):
-        {
-            u8 zone @ p;
-        }
-        (RecordFieldDefinitionType::BallSpeed):
-        {
-            u16 ball_speed @ p;
-        }
-        (RecordFieldDefinitionType::Cadence256):
-        {
-            u16 cadence256 @ p;
-        }
-        (RecordFieldDefinitionType::FractionalCadence):
-        {
-            u8 fractional_cadence @ p;
-        }
-        (RecordFieldDefinitionType::TotalHemoglobinConc):
-        {
-            u16 total_hemoglobin_conc @ p;
-        }
-        (RecordFieldDefinitionType::TotalHemoglobinConcMin):
-        {
-            u16 total_hemoglobin_conc_min @ p;
-        }
-        (RecordFieldDefinitionType::TotalHemoglobinConcMax):
-        {
-            u16 total_hemoglobin_conc_max @ p;
-        }
-        (RecordFieldDefinitionType::SaturatedHemoglobinPercent):
-        {
-            u16 saturated_hemoglobin_percent @ p;
-        }
-        (RecordFieldDefinitionType::SaturatedHemoglobinPercentMin):
-        {
-            u16 saturated_hemoglobin_percent_min @ p;
-        }
-        (RecordFieldDefinitionType::SaturatedHemoglobinPercentMax):
-        {
-            u16 saturated_hemoglobin_percent_max @ p;
-        }
-        (RecordFieldDefinitionType::DeviceIndex):
-        {
-            DeviceIndexType device_index @ p;
-        }
-        (RecordFieldDefinitionType::LeftPco):
-        {
-            s8 left_pco @ p;
-        }
-        (RecordFieldDefinitionType::RightPco):
-        {
-            s8 right_pco @ p;
-        }
-        (RecordFieldDefinitionType::LeftPowerPhase):
-        {
-            u8 left_power_phase @ p;
-        }
-        (RecordFieldDefinitionType::LeftPowerPhasePeak):
-        {
-            u8 left_power_phase_peak @ p;
-        }
-        (RecordFieldDefinitionType::RightPowerPhase):
-        {
-            u8 right_power_phase @ p;
-        }
-        (RecordFieldDefinitionType::RightPowerPhasePeak):
-        {
-            u8 right_power_phase_peak @ p;
-        }
-        (RecordFieldDefinitionType::EnhancedSpeed):
-        {
-            u32 enhanced_speed @ p;
-        }
-        (RecordFieldDefinitionType::EnhancedAltitude):
-        {
-            u32 enhanced_altitude @ p;
-        }
-        (RecordFieldDefinitionType::BatterySoc):
-        {
-            u8 battery_soc @ p;
-        }
-        (RecordFieldDefinitionType::MotorPower):
-        {
-            u16 motor_power @ p;
-        }
-        (RecordFieldDefinitionType::VerticalRatio):
-        {
-            u16 vertical_ratio @ p;
-        }
-        (RecordFieldDefinitionType::StanceTimeBalance):
-        {
-            u16 stance_time_balance @ p;
-        }
-        (RecordFieldDefinitionType::StepLength):
-        {
-            u16 step_length @ p;
-        }
-        (RecordFieldDefinitionType::CycleLength16):
-        {
-            u16 cycle_length16 @ p;
-        }
-        (RecordFieldDefinitionType::AbsolutePressure):
-        {
-            u32 absolute_pressure @ p;
-        }
-        (RecordFieldDefinitionType::Depth):
-        {
-            u32 depth @ p;
-        }
-        (RecordFieldDefinitionType::NextStopDepth):
-        {
-            u32 next_stop_depth @ p;
-        }
-        (RecordFieldDefinitionType::NextStopTime):
-        {
-            u32 next_stop_time @ p;
-        }
-        (RecordFieldDefinitionType::TimeToSurface):
-        {
-            u32 time_to_surface @ p;
-        }
-        (RecordFieldDefinitionType::NdlTime):
-        {
-            u32 ndl_time @ p;
-        }
-        (RecordFieldDefinitionType::CnsLoad):
-        {
-            u8 cns_load @ p;
-        }
-        (RecordFieldDefinitionType::N2Load):
-        {
-            u16 N2_load @ p;
-        }
-        (RecordFieldDefinitionType::RespirationRate):
-        {
-            u8 respiration_rate @ p;
-        }
-        (RecordFieldDefinitionType::EnhancedRespirationRate):
-        {
-            u16 enhanced_respiration_rate @ p;
-        }
-        (RecordFieldDefinitionType::Grit):
-        {
-            float grit @ p;
-        }
-        (RecordFieldDefinitionType::Flow):
-        {
-            float flow @ p;
-        }
-        (RecordFieldDefinitionType::CurrentStress):
-        {
-            u16 current_stress @ p;
-        }
-        (RecordFieldDefinitionType::EbikeTravelRange):
-        {
-            u16 ebike_travel_range @ p;
-        }
-        (RecordFieldDefinitionType::EbikeBatteryLevel):
-        {
-            u8 ebike_battery_level @ p;
-        }
-        (RecordFieldDefinitionType::EbikeAssistMode):
-        {
-            u8 ebike_assist_mode @ p;
-        }
-        (RecordFieldDefinitionType::EbikeAssistLevelPercent):
-        {
-            u8 ebike_assist_level_percent @ p;
-        }
-        (RecordFieldDefinitionType::AirTimeRemaining):
-        {
-            u32 air_time_remaining @ p;
-        }
-        (RecordFieldDefinitionType::PressureSac):
-        {
-            u16 pressure_sac @ p;
-        }
-        (RecordFieldDefinitionType::VolumeSac):
-        {
-            u16 volume_sac @ p;
-        }
-        (RecordFieldDefinitionType::Rmv):
-        {
-            u16 rmv @ p;
-        }
-        (RecordFieldDefinitionType::AscentRate):
-        {
-            s32 ascent_rate @ p;
-        }
-        (RecordFieldDefinitionType::Po2):
-        {
-            u8 po2 @ p;
-        }
-        (RecordFieldDefinitionType::CoreTemperature):
-        {
-            u16 core_temperature @ p;
-        }
-        (RecordFieldDefinitionType::Timestamp):
-        {
-            DateTime timestamp @ p[[format("format_datetime")]];
+        match (fdn) 
+        {
+            (RecordFieldDefinitionType::PositionLat):
+            {
+                s32 position_lat @ p [[format("format_lat")]];
+            }
+            (RecordFieldDefinitionType::PositionLong):
+            {
+                s32 position_long @ p [[format("format_long")]];
+            }
+            (RecordFieldDefinitionType::Altitude):
+            {
+                u16 altitude @ p;
+            }
+            (RecordFieldDefinitionType::HeartRate):
+            {
+                u8 heart_rate @ p;
+            }
+            (RecordFieldDefinitionType::Cadence):
+            {
+                u8 cadence @ p;
+            }
+            (RecordFieldDefinitionType::Distance):
+            {
+                u32 distance @ p [[format("format_distance")]];
+            }
+            (RecordFieldDefinitionType::Speed):
+            {
+                u16 speed @ p;
+            }
+            (RecordFieldDefinitionType::Power):
+            {
+                u16 power @ p;
+            }
+            (RecordFieldDefinitionType::CompressedSpeedDistance):
+            {
+                CompressedSpeedDistanceBitField compressed_speed_distance @ p [[bitfield_order(std::core::BitfieldOrder::MostToLeastSignificant, 12)]];;
+            }
+            (RecordFieldDefinitionType::Grade):
+            {
+                s16 grade @ p;
+            }
+            (RecordFieldDefinitionType::Resistance):
+            {
+                u8 resistance @ p;
+            }
+            (RecordFieldDefinitionType::TimeFromCourse):
+            {
+                s32 time_from_course @ p;
+            }
+            (RecordFieldDefinitionType::CycleLength):
+            {
+                u8 cycle_length @ p;
+            }
+            (RecordFieldDefinitionType::Temperature):
+            {
+                s8 temperature @ p;
+            }
+            (RecordFieldDefinitionType::Speed1s):
+            {
+                u8 speed_1s @ p;
+            }
+            (RecordFieldDefinitionType::Cycles):
+            {
+                u8 cycles @ p;
+            }
+            (RecordFieldDefinitionType::TotalCycles):
+            {
+                u32 total_cycles @ p;
+            }
+            (RecordFieldDefinitionType::CompressedAccumulatedPower):
+            {
+                u16 compressed_accumulated_power @ p;
+            }
+            (RecordFieldDefinitionType::AccumulatedPower):
+            {
+                u32 accumulated_power @ p;
+            }
+            (RecordFieldDefinitionType::LeftRightBalance):
+            {
+                LeftRightBalanceType left_right_balance @ p;
+            }
+            (RecordFieldDefinitionType::GpsAccuracy):
+            {
+                u8 gps_accuracy @ p;
+            }
+            (RecordFieldDefinitionType::VerticalSpeed):
+            {
+                s16 vertical_speed @ p;
+            }
+            (RecordFieldDefinitionType::Calories):
+            {
+                u16 calories @ p;
+            }
+            (RecordFieldDefinitionType::VerticalOscillation):
+            {
+                u16 vertical_oscillation @ p;
+            }
+            (RecordFieldDefinitionType::StanceTimePercent):
+            {
+                u16 stance_time_percent @ p;
+            }
+            (RecordFieldDefinitionType::StanceTime):
+            {
+                u16 stance_time @ p;
+            }
+            (RecordFieldDefinitionType::ActivityType):
+            {
+                ActivityType activity_type @ p;
+            }
+            (RecordFieldDefinitionType::LeftTorqueEffectiveness):
+            {
+                u8 left_torque_effectiveness @ p;
+            }
+            (RecordFieldDefinitionType::RightTorqueEffectiveness):
+            {
+                u8 right_torque_effectiveness @ p;
+            }
+            (RecordFieldDefinitionType::LeftPedalSmoothness):
+            {
+                u8 left_pedal_smoothness @ p;
+            }
+            (RecordFieldDefinitionType::RightPedalSmoothness):
+            {
+                u8 right_pedal_smoothness @ p;
+            }
+            (RecordFieldDefinitionType::CombinedPedalSmoothness):
+            {
+                u8 combined_pedal_smoothness @ p;
+            }
+            (RecordFieldDefinitionType::Time128):
+            {
+                u8 time128 @ p;
+            }
+            (RecordFieldDefinitionType::StrokeType):
+            {
+                StrokeType stroke_type @ p;
+            }
+            (RecordFieldDefinitionType::Zone):
+            {
+                u8 zone @ p;
+            }
+            (RecordFieldDefinitionType::BallSpeed):
+            {
+                u16 ball_speed @ p;
+            }
+            (RecordFieldDefinitionType::Cadence256):
+            {
+                u16 cadence256 @ p;
+            }
+            (RecordFieldDefinitionType::FractionalCadence):
+            {
+                u8 fractional_cadence @ p;
+            }
+            (RecordFieldDefinitionType::TotalHemoglobinConc):
+            {
+                u16 total_hemoglobin_conc @ p;
+            }
+            (RecordFieldDefinitionType::TotalHemoglobinConcMin):
+            {
+                u16 total_hemoglobin_conc_min @ p;
+            }
+            (RecordFieldDefinitionType::TotalHemoglobinConcMax):
+            {
+                u16 total_hemoglobin_conc_max @ p;
+            }
+            (RecordFieldDefinitionType::SaturatedHemoglobinPercent):
+            {
+                u16 saturated_hemoglobin_percent @ p;
+            }
+            (RecordFieldDefinitionType::SaturatedHemoglobinPercentMin):
+            {
+                u16 saturated_hemoglobin_percent_min @ p;
+            }
+            (RecordFieldDefinitionType::SaturatedHemoglobinPercentMax):
+            {
+                u16 saturated_hemoglobin_percent_max @ p;
+            }
+            (RecordFieldDefinitionType::DeviceIndex):
+            {
+                DeviceIndexType device_index @ p;
+            }
+            (RecordFieldDefinitionType::LeftPco):
+            {
+                s8 left_pco @ p;
+            }
+            (RecordFieldDefinitionType::RightPco):
+            {
+                s8 right_pco @ p;
+            }
+            (RecordFieldDefinitionType::LeftPowerPhase):
+            {
+                u8 left_power_phase @ p;
+            }
+            (RecordFieldDefinitionType::LeftPowerPhasePeak):
+            {
+                u8 left_power_phase_peak @ p;
+            }
+            (RecordFieldDefinitionType::RightPowerPhase):
+            {
+                u8 right_power_phase @ p;
+            }
+            (RecordFieldDefinitionType::RightPowerPhasePeak):
+            {
+                u8 right_power_phase_peak @ p;
+            }
+            (RecordFieldDefinitionType::EnhancedSpeed):
+            {
+                u32 enhanced_speed @ p;
+            }
+            (RecordFieldDefinitionType::EnhancedAltitude):
+            {
+                u32 enhanced_altitude @ p;
+            }
+            (RecordFieldDefinitionType::BatterySoc):
+            {
+                u8 battery_soc @ p;
+            }
+            (RecordFieldDefinitionType::MotorPower):
+            {
+                u16 motor_power @ p;
+            }
+            (RecordFieldDefinitionType::VerticalRatio):
+            {
+                u16 vertical_ratio @ p;
+            }
+            (RecordFieldDefinitionType::StanceTimeBalance):
+            {
+                u16 stance_time_balance @ p;
+            }
+            (RecordFieldDefinitionType::StepLength):
+            {
+                u16 step_length @ p;
+            }
+            (RecordFieldDefinitionType::CycleLength16):
+            {
+                u16 cycle_length16 @ p;
+            }
+            (RecordFieldDefinitionType::AbsolutePressure):
+            {
+                u32 absolute_pressure @ p;
+            }
+            (RecordFieldDefinitionType::Depth):
+            {
+                u32 depth @ p;
+            }
+            (RecordFieldDefinitionType::NextStopDepth):
+            {
+                u32 next_stop_depth @ p;
+            }
+            (RecordFieldDefinitionType::NextStopTime):
+            {
+                u32 next_stop_time @ p;
+            }
+            (RecordFieldDefinitionType::TimeToSurface):
+            {
+                u32 time_to_surface @ p;
+            }
+            (RecordFieldDefinitionType::NdlTime):
+            {
+                u32 ndl_time @ p;
+            }
+            (RecordFieldDefinitionType::CnsLoad):
+            {
+                u8 cns_load @ p;
+            }
+            (RecordFieldDefinitionType::N2Load):
+            {
+                u16 N2_load @ p;
+            }
+            (RecordFieldDefinitionType::RespirationRate):
+            {
+                u8 respiration_rate @ p;
+            }
+            (RecordFieldDefinitionType::EnhancedRespirationRate):
+            {
+                u16 enhanced_respiration_rate @ p;
+            }
+            (RecordFieldDefinitionType::Grit):
+            {
+                float grit @ p;
+            }
+            (RecordFieldDefinitionType::Flow):
+            {
+                float flow @ p;
+            }
+            (RecordFieldDefinitionType::CurrentStress):
+            {
+                u16 current_stress @ p;
+            }
+            (RecordFieldDefinitionType::EbikeTravelRange):
+            {
+                u16 ebike_travel_range @ p;
+            }
+            (RecordFieldDefinitionType::EbikeBatteryLevel):
+            {
+                u8 ebike_battery_level @ p;
+            }
+            (RecordFieldDefinitionType::EbikeAssistMode):
+            {
+                u8 ebike_assist_mode @ p;
+            }
+            (RecordFieldDefinitionType::EbikeAssistLevelPercent):
+            {
+                u8 ebike_assist_level_percent @ p;
+            }
+            (RecordFieldDefinitionType::AirTimeRemaining):
+            {
+                u32 air_time_remaining @ p;
+            }
+            (RecordFieldDefinitionType::PressureSac):
+            {
+                u16 pressure_sac @ p;
+            }
+            (RecordFieldDefinitionType::VolumeSac):
+            {
+                u16 volume_sac @ p;
+            }
+            (RecordFieldDefinitionType::Rmv):
+            {
+                u16 rmv @ p;
+            }
+            (RecordFieldDefinitionType::AscentRate):
+            {
+                s32 ascent_rate @ p;
+            }
+            (RecordFieldDefinitionType::Po2):
+            {
+                u8 po2 @ p;
+            }
+            (RecordFieldDefinitionType::CoreTemperature):
+            {
+                u16 core_temperature @ p;
+            }
+            (RecordFieldDefinitionType::Timestamp):
+            {
+                DateTime timestamp @ p [[format("format_datetime")]];
+            }
         }
     }
+    catch{
+        u8 uknown[s] @ p;
+    }
     $ += s;
+#ifdef DEBUG_MODE
+    std::print(std::format("RecordField: Bumped $ to {:X}", $));
+#endif
 };
 
 struct FileIdField 
@@ -3312,50 +3361,56 @@ struct FileIdField
     auto s = scratch_defs[i].size;
     auto p = $;
     u8 fdn = u8(scratch_defs[i].field_definition_num);
-    //std::print(std::format("FieldIdField: Index:{},Size:{},Pointer:{} FDN: {}", i, s, p, fdn));
-    match (fdn) 
+#ifdef DEBUG_MODE
+    std::print(std::format("FieldIdField: FDN:{} Index:{},Size:{},Pointer:{:X} ", fdn, i, s, p));
+#endif
+    try
     {
-        (FileIdFieldDefinitionType::TimeCreated): {
-            if(scratch_fix_header.architecture == Architecture::BigEndian){
-                be DateTime time_created @ p [[format("format_local_datetime")]];
+        match (fdn) 
+        {
+            (FileIdFieldDefinitionType::TimeCreated): {
+                DateTime time_created @ p [[format("format_datetime")]];
+                scratch_time_created = time_created;
             }
-            else
+            (FileIdFieldDefinitionType::Type): {
+                FileType type @ p;
+            }
+            (FileIdFieldDefinitionType::Manufacturer):
             {
-                le DateTime time_created @ p [[format("format_local_datetime")]];
+                u16 manufacturer @ p;
             }
-            scratch_time_created = time_created;
-        }
-        (FileIdFieldDefinitionType::Type): {
-            FileType type @ p;
-        }
-        (FileIdFieldDefinitionType::Manufacturer):
-        {
-            u16 manufacturer @ p;
-        }
-        (FileIdFieldDefinitionType::Product): 
-        {
-            u16 product @ p;
-        }
-        (FileIdFieldDefinitionType::SerialNumber): 
-        {
-            u32 serial_number @ p;
-        }
-        (FileIdFieldDefinitionType::Number): 
-        {
-            u16 number @ p;
-        }
-        (FileIdFieldDefinitionType::ProductName): 
-        {
-            str product_name @ p;
+            (FileIdFieldDefinitionType::Product): 
+            {
+                u16 product @ p;
+            }
+            (FileIdFieldDefinitionType::SerialNumber): 
+            {
+                u32 serial_number @ p;
+            }
+            (FileIdFieldDefinitionType::Number): 
+            {
+                u16 number @ p;
+            }
+            (FileIdFieldDefinitionType::ProductName): 
+            {
+                str product_name @ p;
+            }
         }
     }
+    catch{
+        u8 uknown[s] @ p;
+    }
     $ += s;
+#ifdef DEBUG_MODE
+    std::print(std::format("FieldIdField: Bumped $ to {:X}", $));
+#endif
 };
 
 struct DataMessage
 {
     MsgNum subtype = scratch_fix_header.global_msg_num;
 #ifdef DEBUG_MODE
+    std::print(std::format("Data message MsgNum:{}", u16(subtype)));
     try
     {
 #endif
@@ -3366,7 +3421,7 @@ struct DataMessage
             (MsgNum::Session): SessionField fields[scratch_fix_header.field_num];
             (MsgNum::Lap): LapField fields[scratch_fix_header.field_num];
             (MsgNum::Record): RecordField fields[scratch_fix_header.field_num];
-            (_): std::error(std::format("Invalid data message type code! MsgNum:{}", u16(subtype)));
+            (_): std::print(std::format("Invalid data message type code! MsgNum:{}", u16(subtype)));
         }
 #ifdef DEBUG_MODE
     }
@@ -3413,12 +3468,12 @@ fn record_formatter(Record r)
 struct FitFile
 {
     Header header;
-#ifdef DEBUG_MODE
-    Record records[10] @ sizeof(Header);
-#endif
-#ifndef DEBUG_MODE
+// #ifdef DEBUG_MODE
+//     Record records[10] @ sizeof(Header);
+// #endif
+// #ifndef DEBUG_MODE
     Record records[while(!std::mem::reached(sizeof(Header) + header.data_size))] @ sizeof(Header);
-#endif
+// #endif
     le u16 CRC @ sizeof(Header) + header.data_size;
 };
 
