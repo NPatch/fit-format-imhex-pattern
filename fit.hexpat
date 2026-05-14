@@ -8,10 +8,9 @@ import std.mem;
 import std.time;
 import std.math;
 
-#pragma loop_limit 100000
+#pragma loop_limit 400000
 
-//#define XIAOMI_FIT
-#define DEBUG_MODE
+//#define DEBUG_MODE
 
 /*
 Tested against normal fit files. For compressed headers and other edge cases:
@@ -54,10 +53,6 @@ u8 header_without_crc = 12;
 u8 prefetched_header_size @ 0x00 [[hidden]]; 
 
 using MsgNum;
-#ifdef XIAOMI_FIT
-using FieldBaseTypeEnum;
-#endif
-#ifndef XIAOMI_FIT
 using FitBaseTypeEnum;
 fn fit_base_type_formatter(u8 fbt)
 {
@@ -135,7 +130,7 @@ fn fit_base_type_formatter_2(auto fbt)
     }
     
 };
-#endif
+
 using FieldDefinition;
 using FixedHeader;
 
@@ -1413,12 +1408,7 @@ struct FieldDefinition
 #endif
     
     u8 size;
-#ifdef XIAOMI_FIT
-    FieldBaseTypeEnum field_base_type;
-#endif
-#ifndef XIAOMI_FIT
     FitBaseTypeEnum field_base_type;
-#endif
 };
 
 fn field_definition_num_formatter(u8 fdn)
