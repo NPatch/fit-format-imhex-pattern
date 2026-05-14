@@ -10,10 +10,35 @@ import std.math;
 
 #pragma loop_limit 100000
 
+//#define XIAOMI_FIT
+#define DEBUG_MODE
+
 /*
 Tested against normal fit files. For compressed headers and other edge cases:
 check github.com/NPatch/fit-format-imhex-pattern
 */
+
+using Architecture;
+
+enum Architecture : u8
+{
+    LittleEndian = 0x0,
+    BigEndian = 0x1
+};
+
+Architecture global_architecture @ 0x0E;
+
+fn ArchToEndian(Architecture a)
+{
+    if(a == Architecture::BigEndian)
+    {
+        return std::mem::Endian::Big;
+    }
+    return std::mem::Endian::Little;
+};
+
+//Has to be here because later on, it messes up things between calculations on local data, as well as, calculations on the file data/fit protocol data itself. Becomes a mess to do properly.
+std::core::set_endian(ArchToEndian(global_architecture));
 
 using EpochTime = u32;
 using DateTime = u32;
@@ -28,25 +53,89 @@ u8 header_without_crc = 12;
 //So, we prefetch it
 u8 prefetched_header_size @ 0x00 [[hidden]]; 
 
-using Architecture;
-
-enum Architecture : u8
-{
-    LittleEndian = 0x0,
-    BigEndian = 0x1
-};
-
-fn ArchToEndian(Architecture a)
-{
-    if(a == Architecture::BigEndian)
-    {
-        return std::mem::Endian::Big;
-    }
-    return std::mem::Endian::Little;
-};
-
 using MsgNum;
+#ifdef XIAOMI_FIT
 using FieldBaseTypeEnum;
+#endif
+#ifndef XIAOMI_FIT
+using FitBaseTypeEnum;
+fn fit_base_type_formatter(u8 fbt)
+{
+    u8 xiaomi_accounted_value = fbt;
+    if((xiaomi_accounted_value >= 0x03 && xiaomi_accounted_value <= 0x06)
+        || (xiaomi_accounted_value >= 0x08 && xiaomi_accounted_value <= 0x09)
+        || (xiaomi_accounted_value >= 0x0B && xiaomi_accounted_value <= 0x0C)
+        || (xiaomi_accounted_value >= 0x0E && xiaomi_accounted_value <= 0x10)
+    )
+    {
+        xiaomi_accounted_value += 0x80;
+    }
+    FitBaseTypeEnum fbte = xiaomi_accounted_value;
+    std::format("{}({})", std::string::to_string(fbte), fdt);
+};
+
+fn fit_base_type_formatter_2(auto fbt)
+{
+    match(fbt)
+    {
+        (0): {
+            return "FitBaseTypeEnum::Enum";
+        }
+        (1): {
+            return "FitBaseTypeEnum::Sint8";
+        }
+        (2): {
+            return "FitBaseTypeEnum::Uint8";
+        }
+        (3|131): {
+            return "FitBaseTypeEnum::Sint16";
+        }
+        (4|132): {
+            return "FitBaseTypeEnum::Uint16";
+        }
+        (5|133): {
+            return "FitBaseTypeEnum::Sint32";
+        }
+        (6|134): {
+            return "FitBaseTypeEnum::Uint32";
+        }
+        (7): {
+            return "FitBaseTypeEnum::String";
+        }
+        (8|136): {
+            return "FitBaseTypeEnum::Float32";
+        }
+        (9|137): {
+            return "FitBaseTypeEnum:Float64";
+        }
+        (10): {
+            return "FitBaseTypeEnum::Uint8z";
+        }
+        (11|139): {
+            return "FitBaseTypeEnum:Uint16z";
+        }
+        (12|140): {
+            return "FitBaseTypeEnum::Uint32z";
+        }
+        (13): {
+            return "FitBaseTypeEnum::Byte";
+        }
+        (14|142): {
+            return "FitBaseTypeEnum::Sint64";
+        }
+        (15|143): {
+            return "FitBaseTypeEnum::Uint64";
+        }
+        (16|144): {
+            return "FitBaseTypeEnum::Uint64z";
+        }
+        (255): {
+            return "FitBaseTypeEnum:Invalid";
+        }
+    }
+    
+};
+#endif
 using FieldDefinition;
 using FixedHeader;
 
@@ -103,139 +192,139 @@ FieldDefinition scratch_defs[256] @ defs_array_addr in scratch;
 
 enum MsgNum : u16
 {
-    FileId                         = 0x0000,
-    Capabilities                   = 0x0001,
-    DeviceSettings                 = 0x0002,
-    UserProfile                    = 0x0003,
-    HrmProfile                     = 0x0004,
-    SdmProfile                     = 0x0005,
-    BikeProfile                    = 0x0006,
-    ZonesTarget                    = 0x0007,
-    HrZone                         = 0x0008,
-    PowerZone                      = 0x0009,
-    MetZone                        = 0x000A,
-    Sport                          = 0x000C,
-    TrainingSettings               = 0x000D,
-    Goal                           = 0x000F,
-    Session                        = 0x0012,
-    Lap                            = 0x0013,
-    Record                         = 0x0014,
-    Event                          = 0x0015,
-    DeviceInfo                     = 0x0017,
-    Workout                        = 0x001A,
-    WorkoutStep                    = 0x001B,
-    Schedule                       = 0x001C,
-    WeightScale                    = 0x001E,
-    Course                         = 0x001F,
-    CoursePoint                    = 0x0020,
-    Totals                         = 0x0021,
-    Activity                       = 0x0022,
-    Software                       = 0x0023,
-    FileCapabilities               = 0x0025,
-    MesgCapabilities               = 0x0026,
-    FieldCapabilities              = 0x0027,
-    FileCreator                    = 0x0031,
-    BloodPressure                  = 0x0033,
-    SpeedZone                      = 0x0035,
-    Monitoring                     = 0x0037,
-    TrainingFile                   = 0x0048,
-    Hrv                            = 0x004E,
-    AntRx                          = 0x0050,
-    AntTx                          = 0x0051,
-    AntChannelId                   = 0x0052,
-    Length                         = 0x0065,
-    MonitoringInfo                 = 0x0067,
-    Pad                            = 0x0069,
-    SlaveDevice                    = 0x006A,
-    Connectivity                   = 0x007F,
-    WeatherConditions              = 0x0080,
-    WeatherAlert                   = 0x0081,
-    CadenceZone                    = 0x0083,
-    Hr                             = 0x0084,
-    SegmentLap                     = 0x008E,
-    MemoGlob                       = 0x0091,
-    SegmentId                      = 0x0094,
-    SegmentLeaderboardEntry        = 0x0095,
-    SegmentPoint                   = 0x0096,
-    SegmentFile                    = 0x0097,
-    WorkoutSession                 = 0x009E,
-    WatchfaceSettings              = 0x009F,
-    GpsMetadata                    = 0x00A0,
-    CameraEvent                    = 0x00A1,
-    TimestampCorrelation           = 0x00A2,
-    GyroscopeData                  = 0x00A4,
-    AccelerometerData              = 0x00A5,
-    ThreeDSensorCalibration        = 0x00A7,
-    VideoFrame                     = 0x00A9,
-    ObdiiData                      = 0x00AE,
-    NmeaSentence                   = 0x00B1,
-    AviationAttitude               = 0x00B2,
-    Video                          = 0x00B8,
-    VideoTitle                     = 0x00B9,
-    VideoDescription               = 0x00BA,
-    VideoClip                      = 0x00BB,
-    OhrSettings                    = 0x00BC,
-    ExdScreenConfiguration         = 0x00C8,
-    ExdDataFieldConfiguration      = 0x00C9,
-    ExdDataConceptConfiguration    = 0x00CA,
-    FieldDescription               = 0x00CE,
-    DeveloperDataId                = 0x00CF,
-    MagnetometerData               = 0x00D0,
-    BarometerData                  = 0x00D1,
-    OneDSensorCalibration          = 0x00D2,
-    MonitoringHrData               = 0x00D3,
-    TimeInZone                     = 0x00D8,
-    Set                            = 0x00E1,
-    StressLevel                    = 0x00E3,
-    MaxMetData                     = 0x00E5,
-    DiveSettings                   = 0x0102,
-    DiveGas                        = 0x0103,
-    DiveAlarm                      = 0x0106,
-    ExerciseTitle                  = 0x0108,
-    DiveSummary                    = 0x010C,
-    Spo2Data                       = 0x010D,
-    SleepLevel                     = 0x0113,
-    Jump                           = 0x011D,
-    AadAccelFeatures               = 0x0121,
-    BeatIntervals                  = 0x0122,
-    RespirationRate                = 0x0129,
-    HsaAccelerometerData           = 0x012E,
-    HsaStepData                    = 0x0130,
-    HsaSpo2Data                    = 0x0131,
-    HsaStressData                  = 0x0132,
-    HsaRespirationData             = 0x0133,
-    HsaHeartRateData               = 0x0134,
-    Split                          = 0x0138,
-    SplitSummary                   = 0x0139,
-    HsaBodyBatteryData             = 0x013A,
-    HsaEvent                       = 0x013B,
-    ClimbPro                       = 0x013D,
-    TankUpdate                     = 0x013F,
-    TankSummary                    = 0x0143,
-    SleepAssessment                = 0x015A,
-    HrvStatusSummary               = 0x0172,
-    HrvValue                       = 0x0173,
-    RawBbi                         = 0x0174,
-    DeviceAuxBatteryInfo           = 0x0177,
-    HsaGyroscopeData               = 0x0178,
-    ChronoShotSession              = 0x0183,
-    ChronoShotData                 = 0x0184,
-    HsaConfigurationData           = 0x0185,
-    DiveApneaAlarm                 = 0x0189,
-    SkinTempOvernight              = 0x018E,
-    HsaWristTemperatureData        = 0x0199,
-    SleepDisruptionSeverityPeriod  = 0x01D6,
-    SleepDisruptionOvernightSeverity = 0x01D7,
-    MfgRangeMin                    = 0xFF00,
-    MfgRangeMax                    = 0xFFFE,
-    Invalid                        = 0xFFFF
+    FileId                         = 0x0000,        // 0
+    Capabilities                   = 0x0001,        // 1
+    DeviceSettings                 = 0x0002,        // 2
+    UserProfile                    = 0x0003,        // 3
+    HrmProfile                     = 0x0004,        // 4
+    SdmProfile                     = 0x0005,        // 5
+    BikeProfile                    = 0x0006,        // 6
+    ZonesTarget                    = 0x0007,        // 7
+    HrZone                         = 0x0008,        // 8
+    PowerZone                      = 0x0009,        // 9
+    MetZone                        = 0x000A,        // 10
+    Sport                          = 0x000C,        // 12
+    TrainingSettings               = 0x000D,        // 13
+    Goal                           = 0x000F,        // 15
+    Session                        = 0x0012,        // 18
+    Lap                            = 0x0013,        // 19
+    Record                         = 0x0014,        // 20
+    Event                          = 0x0015,        // 21
+    DeviceInfo                     = 0x0017,        // 23
+    Workout                        = 0x001A,        // 26
+    WorkoutStep                    = 0x001B,        // 27
+    Schedule                       = 0x001C,        // 28
+    WeightScale                    = 0x001E,        // 30
+    Course                         = 0x001F,        // 31
+    CoursePoint                    = 0x0020,        // 32
+    Totals                         = 0x0021,        // 33
+    Activity                       = 0x0022,        // 34
+    Software                       = 0x0023,        // 35
+    FileCapabilities               = 0x0025,        // 37
+    MesgCapabilities               = 0x0026,        // 38
+    FieldCapabilities              = 0x0027,        // 39
+    FileCreator                    = 0x0031,        // 49
+    BloodPressure                  = 0x0033,        // 51
+    SpeedZone                      = 0x0035,        // 53
+    Monitoring                     = 0x0037,        // 55
+    TrainingFile                   = 0x0048,        // 72
+    Hrv                            = 0x004E,        // 78
+    AntRx                          = 0x0050,        // 80
+    AntTx                          = 0x0051,        // 81
+    AntChannelId                   = 0x0052,        // 82
+    Length                         = 0x0065,        // 101
+    MonitoringInfo                 = 0x0067,        // 103
+    Pad                            = 0x0069,        // 105
+    SlaveDevice                    = 0x006A,        // 106
+    Connectivity                   = 0x007F,        // 127
+    WeatherConditions              = 0x0080,        // 128
+    WeatherAlert                   = 0x0081,        // 129
+    CadenceZone                    = 0x0083,        // 131
+    Hr                             = 0x0084,        // 132
+    SegmentLap                     = 0x008E,        // 142
+    MemoGlob                       = 0x0091,        // 145
+    SegmentId                      = 0x0094,        // 148
+    SegmentLeaderboardEntry        = 0x0095,        // 149
+    SegmentPoint                   = 0x0096,        // 150
+    SegmentFile                    = 0x0097,        // 151
+    WorkoutSession                 = 0x009E,        // 158
+    WatchfaceSettings              = 0x009F,        // 159
+    GpsMetadata                    = 0x00A0,        // 160
+    CameraEvent                    = 0x00A1,        // 161
+    TimestampCorrelation           = 0x00A2,        // 162
+    GyroscopeData                  = 0x00A4,        // 164
+    AccelerometerData              = 0x00A5,        // 165
+    ThreeDSensorCalibration        = 0x00A7,        // 167
+    VideoFrame                     = 0x00A9,        // 169
+    ObdiiData                      = 0x00AE,        // 174
+    NmeaSentence                   = 0x00B1,        // 177
+    AviationAttitude               = 0x00B2,        // 178
+    Video                          = 0x00B8,        // 184
+    VideoTitle                     = 0x00B9,        // 185
+    VideoDescription               = 0x00BA,        // 186
+    VideoClip                      = 0x00BB,        // 187
+    OhrSettings                    = 0x00BC,        // 188
+    ExdScreenConfiguration         = 0x00C8,        // 200
+    ExdDataFieldConfiguration      = 0x00C9,        // 201
+    ExdDataConceptConfiguration    = 0x00CA,        // 202
+    FieldDescription               = 0x00CE,        // 206
+    DeveloperDataId                = 0x00CF,        // 207
+    MagnetometerData               = 0x00D0,        // 208
+    BarometerData                  = 0x00D1,        // 209
+    OneDSensorCalibration          = 0x00D2,        // 210
+    MonitoringHrData               = 0x00D3,        // 211
+    TimeInZone                     = 0x00D8,        // 216
+    Set                            = 0x00E1,        // 225
+    StressLevel                    = 0x00E3,        // 227
+    MaxMetData                     = 0x00E5,        // 229
+    DiveSettings                   = 0x0102,        // 258
+    DiveGas                        = 0x0103,        // 259
+    DiveAlarm                      = 0x0106,        // 262
+    ExerciseTitle                  = 0x0108,        // 264
+    DiveSummary                    = 0x010C,        // 268
+    Spo2Data                       = 0x010D,        // 269
+    SleepLevel                     = 0x0113,        // 275
+    Jump                           = 0x011D,        // 285
+    AadAccelFeatures               = 0x0121,        // 289
+    BeatIntervals                  = 0x0122,        // 290
+    RespirationRate                = 0x0129,        // 297
+    HsaAccelerometerData           = 0x012E,        // 302
+    HsaStepData                    = 0x0130,        // 304
+    HsaSpo2Data                    = 0x0131,        // 305
+    HsaStressData                  = 0x0132,        // 306
+    HsaRespirationData             = 0x0133,        // 307
+    HsaHeartRateData               = 0x0134,        // 308
+    Split                          = 0x0138,        // 312
+    SplitSummary                   = 0x0139,        // 313
+    HsaBodyBatteryData             = 0x013A,        // 314
+    HsaEvent                       = 0x013B,        // 315
+    ClimbPro                       = 0x013D,        // 317
+    TankUpdate                     = 0x013F,        // 319
+    TankSummary                    = 0x0143,        // 323
+    SleepAssessment                = 0x015A,        // 346
+    HrvStatusSummary               = 0x0172,        // 370
+    HrvValue                       = 0x0173,        // 371
+    RawBbi                         = 0x0174,        // 372
+    DeviceAuxBatteryInfo           = 0x0177,        // 375
+    HsaGyroscopeData               = 0x0178,        // 376
+    ChronoShotSession              = 0x0183,        // 387
+    ChronoShotData                 = 0x0184,        // 388
+    HsaConfigurationData           = 0x0185,        // 389
+    DiveApneaAlarm                 = 0x0189,        // 393
+    SkinTempOvernight              = 0x018E,        // 398
+    HsaWristTemperatureData        = 0x0199,        // 409
+    SleepDisruptionSeverityPeriod  = 0x01D6,        // 470
+    SleepDisruptionOvernightSeverity = 0x01D7,      // 471
+
+    MfgRangeMin                    = 0xFF00,        // 0xFF00
+    MfgRangeMax                    = 0xFFFE,        // 0xFFFE
+    Invalid                        = 0xFFFF         // 65535
 };
 
 struct FixedHeader
 {
     u8 reserved;
     Architecture architecture;
-    std::core::set_endian(ArchToEndian(architecture));
     MsgNum global_msg_num;
     u8 field_num;
 };
@@ -259,7 +348,7 @@ fn clearScratchDefinitions(u16 limit = 256)
     {
         scratch_defs[i].field_definition_num = 255;
         scratch_defs[i].size = 0;
-        scratch_defs[i].field_base_type = FieldBaseTypeEnum::Invalid;
+        scratch_defs[i].field_base_type = 255; //255 is invalid for any enum u8
     }
 };
 
@@ -310,7 +399,7 @@ struct Header
     u8 header_size;
     ProtocolVersion protocol_version_number;
     ProfileVersion protocol_version;    
-    u32 data_size;
+    le u32 data_size;
     char data_type[4];
     if(prefetched_header_size == header_with_crc)
     {
@@ -343,12 +432,30 @@ bitfield RecordHeader {
 
 enum FileType : u8
 {
-    Activity = 0x4,
-    Workout = 0x5,
-    Course = 0x6
+    Device = 0x01,              //1
+    Settings = 0x02,            //2
+    Sport = 0x03,               //3
+    Activity = 0x04,            //4
+    Workout = 0x05,             //5
+    Course = 0x06,              //6
+    Schedules = 0x07,           //7
+    Weight = 0x09,              //9
+    Totals = 0x0A,              //10
+    Goals = 0x0B,               //11
+    BloodPressure = 0x0E,       //14
+    MonitoringA = 0x0F,         //15
+    ActivitySummary = 0x14,     //20
+    MonitoringDaily = 0x1C,     //28
+    MonitoringB = 0x20,         //32
+    Segment = 0x22,             //34
+    SegmentList = 0x24,         //36
+    ExdConfiguration = 0x28,    //40
+    MfgRangeMin = 0xF7,         //247
+    MfgRangeMax = 0xFE,         //254
+    Invalid = 0xFF              //255
 };
 
-enum FieldBaseTypeEnum : u8
+enum TypeEnum : u8
 {
     Enum                        = 0x00,
     Sint8                       = 0x01,
@@ -570,6 +677,73 @@ enum FieldBaseTypeEnum : u8
     Invalid                    = 0xD8
 };
 
+enum FieldBaseTypeEnum : u8
+{
+    Enum = 0x00,
+    SInt8 = 0x01,
+    UInt8 = 0x02,
+    SInt16 = 0x03,
+    UInt16 = 0x04,
+    SInt32 = 0x05,
+    UInt32 = 0x06,
+    String = 0x07,
+    Float32 = 0x08,
+    Float64 = 0x09,
+    UInt8z = 0x0A,
+    UInt16z = 0x0B,
+    UInt32z = 0x0C,
+    Byte = 0x0D,
+    SInt64 = 0x0E,
+    UInt64 = 0x0F,
+    UInt64z = 0x10,
+    // And this with the type defn to get the index
+    BaseTypeNumMask = 0x1F
+};
+
+// enum FitBaseTypeEnum : u8
+// {
+//     Enum        = 0x00,        // 0
+//     Sint8       = 0x01,        // 1
+//     Uint8       = 0x02,        // 2
+//     Sint16      = 0x83,        // 131
+//     Uint16      = 0x84,        // 132
+//     Sint32      = 0x85,        // 133
+//     Uint32      = 0x86,        // 134
+//     String      = 0x07,        // 7
+//     Float32     = 0x88,        // 136
+//     Float64     = 0x89,        // 137
+//     Uint8z      = 0x0A,        // 10
+//     Uint16z     = 0x8B,        // 139
+//     Uint32z     = 0x8C,        // 140
+//     Byte        = 0x0D,        // 13
+//     Sint64      = 0x8E,        // 142
+//     Uint64      = 0x8F,        // 143
+//     Uint64z     = 0x90,        // 144
+//     Invalid     = 0xFF         // 0xFF
+// } [[format("fit_base_type_formatter2")]];
+
+enum FitBaseTypeEnum : u8
+{
+    Enum        = 0,
+    Sint8       = 1,
+    Uint8       = 2,
+    Sint16      = 131,
+    Uint16      = 132,
+    Sint32      = 133,
+    Uint32      = 134,
+    String      = 7,
+    Float32     = 136,
+    Float64     = 137,
+    Uint8z      = 10,
+    Uint16z     = 139,
+    Uint32z     = 140,
+    Byte        = 13,
+    Sint64      = 142,
+    Uint64      = 143,
+    Uint64z     = 144,
+    Invalid     = 0xFF
+} [[format("fit_base_type_formatter_2")]];
+
 enum SportType : u8
 {
     Generic = 0,
@@ -742,14 +916,14 @@ enum SubSportType : u8
 
 enum FileIdFieldDefinitionType : u8
 {
-    Type = 0,
-    Manufacturer = 1,
-    Product = 2,
-    SerialNumber = 3,
-    TimeCreated = 4,
-    Number = 5,
-    ProductName = 8,
-    Invalid = 255
+    Type = 0x00,
+    Manufacturer = 0x01,
+    Product = 0x02,
+    SerialNumber = 0x03,
+    TimeCreated = 0x04,
+    Number = 0x05,
+    ProductName = 0x08,
+    Invalid = 0xFF
 };
 
 enum SessionFieldDefinitionType : u8
@@ -1091,13 +1265,15 @@ bitfield CompressedSpeedDistanceBitField
 
 enum DeviceIndexType : u8
 {
-    Creator = 0
+    Creator = 0,
+    Invalid = 0xFF
 };
 
 enum LeftRightBalanceType : u8
 {
     Mask = 0x3FFF,
-    Right = 0x8000
+    Right = 0x8000,
+    Invalid = 0xFFFF
 };
 
 enum StrokeType : u8
@@ -1107,7 +1283,8 @@ enum StrokeType : u8
     Serve = 2,
     Forehand = 3,
     Backhand = 4,
-    Smash = 5
+    Smash = 5,
+    Invalid = 0xFF
 };
 
 enum ActivityType : u8
@@ -1218,18 +1395,30 @@ enum RecordFieldDefinitionType : u8
 struct FieldDefinition
 {
     MsgNum dt = scratch_fix_header.global_msg_num;
-    match(dt)
-    {
-        (MsgNum::FileId): FileIdFieldDefinitionType field_definition_num;
-        (MsgNum::Session): SessionFieldDefinitionType field_definition_num;
-        (MsgNum::Lap): LapFieldDefinitionType field_definition_num;
-        (MsgNum::Activity): ActivityFieldDefinitionType field_definition_num;
-        (MsgNum::Record): RecordFieldDefinitionType field_definition_num;
-        (_): u8 field_definition_num;
+#ifdef DEBUG_MODE
+    try{
+#endif
+        match(dt)
+        {
+            (MsgNum::FileId): FileIdFieldDefinitionType field_definition_num;
+            (MsgNum::Session): SessionFieldDefinitionType field_definition_num;
+            (MsgNum::Lap): LapFieldDefinitionType field_definition_num;
+            (MsgNum::Activity): ActivityFieldDefinitionType field_definition_num;
+            (MsgNum::Record): RecordFieldDefinitionType field_definition_num;
+            (_): u8 field_definition_num;
+        }
+#ifdef DEBUG_MODE
     }
+    catch{}
+#endif
     
     u8 size;
+#ifdef XIAOMI_FIT
     FieldBaseTypeEnum field_base_type;
+#endif
+#ifndef XIAOMI_FIT
+    FitBaseTypeEnum field_base_type;
+#endif
 };
 
 fn field_definition_num_formatter(u8 fdn)
@@ -1295,13 +1484,23 @@ fn field_definition_num_formatter2(FieldDefinition def)
 
 struct DefinitionMessage
 {
-    clearScratchDefinitions(scratch_fix_header.field_num);
-    clearScratchFixedHeader();
-    
-    FixedHeader fix_header; 
-    copyFixedHeader(scratch, fix_header);
-    FieldDefinition defs[fix_header.field_num];
-    copyDefinitions(scratch, defs, fix_header.field_num);
+#ifdef DEBUG_MODE
+    try
+    {
+#endif
+        clearScratchDefinitions(scratch_fix_header.field_num);
+        clearScratchFixedHeader();
+        
+        FixedHeader fix_header; 
+        copyFixedHeader(scratch, fix_header);
+        FieldDefinition defs[fix_header.field_num];
+        copyDefinitions(scratch, defs, fix_header.field_num);
+#ifdef DEBUG_MODE
+    }
+    catch{
+        break;
+    }
+#endif
 };
 
 enum EventType : u8
@@ -1378,13 +1577,18 @@ struct ActivityField
     auto i = std::core::array_index();
     auto s = scratch_defs[i].size;
     auto p = $;
-    std::core::set_endian(ArchToEndian(scratch_fix_header.architecture));
-    match (scratch_defs[i].field_definition_num) 
+    u8 fdn = u8(scratch_defs[i].field_definition_num);
+    match (fdn)
     {
         (ActivityFieldDefinitionType::Timestamp): {
-            DateTime timestamp @ p [[format("format_datetime")]];
+            if(scratch_fix_header.architecture == Architecture::BigEndian){
+                be DateTime timestamp @ p [[format("format_datetime")]];
+            }
+            else
+            {
+                le DateTime timestamp @ p [[format("format_datetime")]];
+            }
             scratch_time_created = time_created;
-            $ += s;
         }
         (ActivityFieldDefinitionType::TotalTimerTime): 
         {
@@ -1408,13 +1612,20 @@ struct ActivityField
         }
         (ActivityFieldDefinitionType::LocalTimestamp): 
         {
-            LocalDateTime local_timestamp [[format("format_local_datetime")]];
+            if(scratch_fix_header.architecture == Architecture::BigEndian){
+                be LocalDateTime local_timestamp [[format("format_local_datetime")]];
+            }
+            else
+            {
+                le LocalDateTime local_timestamp [[format("format_local_datetime")]];
+            }
         }
         (ActivityFieldDefinitionType::EventGroup): 
         {
             u8 event_group;
         }
     }
+    $ += s;
 };
 
 enum MessageIndexType : u8
@@ -1463,942 +1674,785 @@ struct SessionField
     auto i = std::core::array_index();
     auto s = scratch_defs[i].size;
     auto p = $;
-
-    std::core::set_endian(ArchToEndian(scratch_fix_header.architecture));
     match (scratch_defs[i].field_definition_num) 
     {
         (SessionFieldDefinitionType::MessageIndex): 
         {
             MessageIndexType message_index @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::Timestamp): 
         {
             DateTime timestamp @ p [[format("format_datetime")]];
-            $ += s;
         }
         
         (SessionFieldDefinitionType::Event): {
             Event event @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::EventType): {
             EventType event_type @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::StartTime): 
         {
             DateTime start_time @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::StartPositionLat): 
         {
-            be s32 start_position_lat @ p;
-            $ += s;
+            s32 start_position_lat @ p;
         }
         
         (SessionFieldDefinitionType::StartPositionLong): 
         {
             s32 start_position_long @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::Sport): {
             SportType sport @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::SubSport): {
             SubSportType sub_sport @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::TotalElapsedTime): 
         {
             u32 total_elapsed_time @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::TotalTimerTime): 
         {
             u32 total_timer_time @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::TotalDistance): 
         {
             u32 total_distance @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::TotalCycles): 
         {
             u32 total_cycles @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::TotalCalories):
         {
             u16 total_calories @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::TotalFatCalories):
         {
             u16 total_fat_calories @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgSpeed):
         {
             u16 avg_speed @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::MaxSpeed):
         {
             u16 max_speed @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgHeartRate):
         {
             u8 avg_heart_rate @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::MaxHeartRate):
         {
             u8 max_heart_rate @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgCadence):
         {
             u8 avg_cadence @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::MaxCadence):
         {
             u8 max_cadence @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgPower):
         {
             u16 avg_power @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::MaxPower):
         {
             u16 max_power @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::TotalAscent):
         {
             u16 total_ascent @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::TotalDescent):
         {
             u16 total_descent @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::TotalTrainingEffect):
         {
             u8 total_training_effect @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::FirstLapIndex):
         {
             u16 first_lap_index @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::NumLaps):
         {
             u16 num_laps @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::EventGroup):
         {
             u8 event_group @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::Trigger):
         {
             SessionTriggerType session_trigger @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::NecLat):
         {
             s32 nec_lat @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::NecLong):
         {
             s32 nec_long @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::SwcLat):
         {
             s32 swc_lat @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::SwcLong):
         {
             s32 swc_long @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::NumLengths):
         {
             u16 num_lengths @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::NormalizedPower):
         {
             u16 normalized_power @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::TrainingStressScore):
         {
             u16 training_stress_score @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::IntensityFactor):
         {
             u16 intensity_factor @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::LeftRightBalance):
         {
             LeftRightBalance100Type left_right_balance @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::EndPositionLat):
         {
             s32 end_position_lat @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::EndPositionLong):
         {
             s32 end_position_long @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgStrokeCount):
         {
             u32 avg_stroke_count @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgStrokeDistance):
         {
             u16 avg_stroke_distance @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::SwimStroke):
         {
             SwimStrokeType swim_stroke @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::PoolLength):
         {
             u16 pool_length @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::ThresholdPower):
         {
             u16 threshold_power @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::NumActiveLengths):
         {
             u16 num_active_lengths @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::TotalWork):
         {
             u32 total_work @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgAltitude):
         {
             u16 avg_altitude @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::MaxAltitude):
         {
             u16 max_altitude @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::GpsAccuracy):
         {
             u8 gps_accuracy @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgGrade):
         {
             s16 avg_grade @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgPosGrade):
         {
             s16 avg_pos_grade @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgNegGrade):
         {
             s16 avg_neg_grade @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::MaxPosGrade):
         {
             s16 max_pos_grade @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::MaxNegGrade):
         {
             s16 max_neg_grade @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgTemperature):
         {
             s8 avg_temperature @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::MaxTemperature):
         {
             s8 max_temperature @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::TotalMovingTime):
         {
             u32 total_moving_time @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgPosVerticalSpeed):
         {
             s16 avg_pos_vertical_speed @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgNegVerticalSpeed):
         {
             s16 avg_neg_vertical_speed @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::MaxPosVerticalSpeed):
         {
             s16 max_pos_vertical_speed @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::MaxNegVerticalSpeed):
         {
             s16 max_neg_vertical_speed @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::MinHeartRate):
         {
             u8 min_heart_rate @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::TimeInHrZone):
         {
             u32 time_in_hr_zone @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::TimeInSpeedZone):
         {
             u32 time_in_speed_zone @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::TimeInCadenceZone):
         {
             u32 time_in_cadence_zone @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::TimeInPowerZone):
         {
             u32 time_in_power_zone @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgLapTime):
         {
             u32 avg_lap_time @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::BestLapIndex):
         {
             u16 best_lap_index @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::MinAltitude):
         {
             u16 min_altitude @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::PlayerScore):
         {
             u16 player_score @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::OpponentScore):
         {
             u16 opponent_score @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::OpponentName):
         {
             str opponent_name @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::StrokeCount):
         {
             u16 stroke_count @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::ZoneCount):
         {
             u16 zone_count @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::MaxBallSpeed):
         {
             u16 max_ball_speed @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgBallSpeed):
         {
             u16 avg_ball_speed @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgVerticalOscillation):
         {
             u16 avg_vertical_oscillation @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgStanceTimePercent):
         {
             u16 avg_stance_time_percent @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgStanceTime):
         {
             u16 avg_stance_time @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgFractionalCadence):
         {
             u8 avg_fractional_cadence @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::MaxFractionalCadence):
         {
             u8 max_fractional_cadence @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::TotalFractionalCycles):
         {
             u8 total_fractional_cycles @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgTotalHemoglobinConc):
         {
             u16 avg_total_hemoglobin_conc @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::MinTotalHemoglobinConc):
         {
             u16 min_total_hemoglobin_conc @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::MaxTotalHemoglobinConc):
         {
             u16 max_total_hemoglobin_conc @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgSaturatedHemoglobinPercent):
         {
             u16 avg_saturated_hemoglobin_percent @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::MinSaturatedHemoglobinPercent):
         {
             u16 min_saturated_hemoglobin_percent @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::MaxSaturatedHemoglobinPercent):
         {
             u16 max_saturated_hemoglobin_percent @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgLeftTorqueEffectiveness):
         {
             u8 avg_left_torque_effectiveness @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgRightTorqueEffectiveness):
         {
             u8 avg_right_torque_effectiveness @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgLeftPedalSmoothness):
         {
             u8 avg_left_pedal_smoothness @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgRightPedalSmoothness):
         {
             u8 avg_left_pedal_smoothness @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgCombinedPedalSmoothness):
         {
             u8 avg_combined_pedal_smoothness @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::SportProfileName):
         {
             str sport_profile_name @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::SportIndex):
         {
             u8 sport_index @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::TimeStanding):
         {
             u32 time_standing @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::StandCount):
         {
             u16 stand_count @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgLeftPco):
         {
             s8 avg_left_pco @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgRightPco):
         {
             s8 avg_right_pco @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgLeftPowerPhase):
         {
             u8 avg_left_power_phase @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgLeftPowerPhasePeak):
         {
             u8 avg_left_power_phase_peak @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgRightPowerPhase):
         {
             u8 avg_right_power_phase @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgRightPowerPhasePeak):
         {
             u8 avg_right_power_phase_peak @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgPowerPosition):
         {
             u16 avg_power_position @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::MaxPowerPosition):
         {
             u16 max_power_position @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgCadencePosition):
         {
             u8 avg_cadence_position @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::MaxCadencePosition):
         {
             u8 max_cadence_position @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::EnhancedAvgSpeed):
         {
             u32 enhanced_avg_speed @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::EnhancedMaxSpeed):
         {
             u32 enhanced_max_speed @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::EnhancedAvgAltitude):
         {
             u32 enhanced_avg_altitude @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::EnhancedMinAltitude):
         {
             u32 enhanced_min_altitude @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::EnhancedMaxAltitude):
         {
             u32 enhanced_max_altitude @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgLevMotorPower):
         {
             u16 avg_lev_motor_power @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::MaxLevMotorPower):
         {
             u16 max_lev_motor_power @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::LevBatteryConsumption):
         {
             u8 lev_battery_consumption @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgVerticalRatio):
         {
             u16 avg_vertical_ratio @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgStanceTimeBalance):
         {
             u16 avg_stance_time_balance @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgStepLength):
         {
             u16 avg_step_length @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::TotalAnaerobicTrainingEffect):
         {
             u8 total_anaerobic_training_effect @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgVam):
         {
             u16 avg_vam @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgDepth):
         {
             u32 avg_depth @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::MaxDepth):
         {
             u32 max_depth @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::SurfaceInterval):
         {
             u32 surface_interval @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::StartCns):
         {
             u8 start_cns @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::EndCns):
         {
             u8 end_cns @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::StartN2):
         {
             u16 start_n2 @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::EndN2):
         {
             u16 end_n2 @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgRespirationRate):
         {
             u8 avg_respiration_rate @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::MaxRespirationRate):
         {
             u8 max_respiration_rate @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::MinRespirationRate):
         {
             u8 min_respiration_rate @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::MinTemperature):
         {
             s8 min_temperature @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::O2Toxicity):
         {
             u16 o2_toxicity @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::DiveNumber):
         {
             u32 dive_number @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::TrainingLoadPeak):
         {
             s32 training_load_peak @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::EnhancedAvgRespirationRate):
         {
             u16 enhanced_avg_respiration_rate @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::EnhancedMaxRespirationRate):
         {
             u16 enhanced_max_respiration_rate @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::EnhancedMinRespirationRate):
         {
             u16 enhanced_min_respiration_rate @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::TotalGrit):
         {
             float total_grit @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::TotalFlow):
         {
             float total_flow @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::JumpCount):
         {
             u16 jump_count @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgGrit):
         {
             float avg_grit @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgFlow):
         {
             float avg_flow @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::WorkoutFeel):
         {
             u8 workout_feel @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::WorkoutRpe):
         {
             u8 workout_rpe @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgSpo2):
         {
             u8 avg_spo2 @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgStress):
         {
             u8 avg_stress @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::MetabolicCalories):
         {
             u16 metabolic_calories @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::SdrrHrv):
         {
             u8 sdrr_hrv @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::RmssdHrv):
         {
             u8 rmssd_hrv @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::TotalFractionalAscent):
         {
             u8 total_fractional_ascent @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::TotalFractionalDescent):
         {
             u8 total_fractional_descent @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::AvgCoreTemperature):
         {
             u16 avg_core_temperature @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::MinCoreTemperature):
         {
             u16 min_core_temperature @ p;
-            $ += s;
         }
         
         (SessionFieldDefinitionType::MaxCoreTemperature):
         {
             u16 max_core_temperature @ p;
-            $ += s;
         }
     }
+    $ += s;
 };
 
 struct LapField
@@ -2406,626 +2460,502 @@ struct LapField
     auto i = std::core::array_index();
     auto s = scratch_defs[i].size;
     auto p = $;
-
-    std::core::set_endian(ArchToEndian(scratch_fix_header.architecture));
     match (scratch_defs[i].field_definition_num) 
     {
         (LapFieldDefinitionType::Event):
         {
             Event event @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::EventType):
         {
             EventType event_type @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::StartTime):
         {
             DateTime start_time @ p[[format("format_datetime")]];
-            $ += s;
         }
         (LapFieldDefinitionType::StartPositionLat):
         {
             s32 start_position_lat @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::StartPositionLong):
         {
             s32 start_position_long @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::EndPositionLat):
         {
             s32 end_position_lat @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::EndPositionLong):
         {
             s32 end_position_long @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::TotalElapsedTime):
         {
             u32 total_elapsed_time @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::TotalTimerTime):
         {
             u32 total_timer_time @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::TotalDistance):
         {
             u32 total_distance @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::TotalCycles):
         {
             u32 total_cycles @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::TotalCalories):
         {
             u16 total_calories @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::TotalFatCalories):
         {
             u16 total_fat_calories @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgSpeed):
         {
             u16 avg_speed @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::MaxSpeed):
         {
             u16 max_speed @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgHeartRate):
         {
             u8 avg_heart_rate @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::MaxHeartRate):
         {
             u8 max_heart_rate @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgCadence):
         {
             u8 avg_cadence @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::MaxCadence):
         {
             u8 max_cadence @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgPower):
         {
             u16 avg_power @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::MaxPower):
         {
             u16 max_power @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::TotalAscent):
         {
             u16 total_ascent @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::TotalDescent):
         {
             u16 total_descent @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::Intensity):
         {
             IntensityType intensity @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::LapTrigger):
         {
             LapTriggerType lap_trigger @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::Sport):
         {
             SportType sport @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::EventGroup):
         {
             u8 event_group @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::NumLengths):
         {
             u16 num_lengths @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::NormalizedPower):
         {
             u16 normalized_power @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::LeftRightBalance):
         {
             LeftRightBalance100Type left_right_balance @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::FirstLengthIndex):
         {
             u16 first_length_index @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgStrokeDistance):
         {
             u16 avg_stroke_distance @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::SwimStroke):
         {
             SwimStrokeType swim_stroke @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::SubSport):
         {
             SubSportType sub_sport @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::NumActiveLengths):
         {
             u16 num_active_lengths @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::TotalWork):
         {
             u32 total_work @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgAltitude):
         {
             u16 avg_altitude @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::MaxAltitude):
         {
             u16 max_altitude @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::GpsAccuracy):
         {
             u8 gps_accuracy @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgGrade):
         {
             s16 avg_grade @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgPosGrade):
         {
             s16 avg_pos_grade @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgNegGrade):
         {
             s16 avg_neg_grade @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::MaxPosGrade):
         {
             s16 max_pos_grade @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::MaxNegGrade):
         {
             s16 max_neg_grade @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgTemperature):
         {
             s8 avg_temperature @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::MaxTemperature):
         {
             s8 max_temperature @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::TotalMovingTime):
         {
             u32 total_moving_time @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgPosVerticalSpeed):
         {
             s16 avg_pos_vertical_speed @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgNegVerticalSpeed):
         {
             s16 avg_neg_vertical_speed @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::MaxPosVerticalSpeed):
         {
             s16 max_pos_vertical_speed @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::MaxNegVerticalSpeed):
         {
             s16 max_neg_vertical_speed @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::TimeInHrZone):
         {
             u32 time_in_hr_zone @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::TimeInSpeedZone):
         {
             u32 time_in_speed_zone @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::TimeInCadenceZone):
         {
             u32 time_in_cadence_zone @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::TimeInPowerZone):
         {
             u32 time_in_power_zone @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::RepetitionNum):
         {
             u16 repetition_num @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::MinAltitude):
         {
             u16 min_altitude @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::MinHeartRate):
         {
             u8 min_heart_rate @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::WktStepIndex):
         {
             MessageIndexType wkt_step_index @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::OpponentScore):
         {
             u16 opponent_score @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::StrokeCount):
         {
             u16 stroke_count @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::ZoneCount):
         {
             u16 zone_count @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgVerticalOscillation):
         {
             u16 avg_vertical_oscillation @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgStanceTimePercent):
         {
             u16 avg_stance_time_percent @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgStanceTime):
         {
             u16 avg_stance_time @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgFractionalCadence):
         {
             u8 avg_fractional_cadence @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::MaxFractionalCadence):
         {
             u8 max_fractional_cadence @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::TotalFractionalCycles):
         {
             u8 total_fractional_cycles @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::PlayerScore):
         {
             u16 player_score @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgTotalHemoglobinConc):
         {
             u16 avg_total_hemoglobin_conc @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::MinTotalHemoglobinConc):
         {
             u16 min_total_hemoglobin_conc @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::MaxTotalHemoglobinConc):
         {
             u16 max_total_hemoglobin_conc @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgSaturatedHemoglobinPercent):
         {
             u16 avg_saturated_hemoglobin_percent @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::MinSaturatedHemoglobinPercent):
         {
             u16 min_saturated_hemoglobin_percent @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::MaxSaturatedHemoglobinPercent):
         {
             u16 max_saturated_hemoglobin_percent @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgLeftTorqueEffectiveness):
         {
             u8 avg_left_torque_effectiveness @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgRightTorqueEffectiveness):
         {
             u8 avg_right_torque_effectiveness @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgLeftPedalSmoothness):
         {
             u8 avg_left_pedal_smoothness @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgRightPedalSmoothness):
         {
             u8 avg_right_pedal_smoothness @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgCombinedPedalSmoothness):
         {
             u8 avg_combined_pedal_smoothness @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::TimeStanding):
         {
             u32 time_standing @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::StandCount):
         {
             u16 stand_count @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgLeftPco):
         {
             s8 avg_left_pco @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgRightPco):
         {
             s8 avg_right_pco @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgLeftPowerPhase):
         {
             u8 avg_left_power_phase @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgLeftPowerPhasePeak):
         {
             u8 avg_left_power_phase_peak @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgRightPowerPhase):
         {
             u8 avg_right_power_phase @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgRightPowerPhasePeak):
         {
             u8 avg_right_power_phase_peak @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgPowerPosition):
         {
             u16 avg_power_position @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::MaxPowerPosition):
         {
             u16 max_power_position @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgCadencePosition):
         {
             u8 avg_cadence_position @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::MaxCadencePosition):
         {
             u8 max_cadence_position @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::EnhancedAvgSpeed):
         {
             u32 enhanced_avg_speed @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::EnhancedMaxSpeed):
         {
             u32 enhanced_max_speed @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::EnhancedAvgAltitude):
         {
             u32 enhanced_avg_altitude @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::EnhancedMinAltitude):
         {
             u32 enhanced_min_altitude @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::EnhancedMaxAltitude):
         {
             u32 enhanced_max_altitude @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgLevMotorPower):
         {
             u16 avg_lev_motor_power @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::MaxLevMotorPower):
         {
             u16 max_lev_motor_power @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::LevBatteryConsumption):
         {
             u8 lev_battery_consumption @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgVerticalRatio):
         {
             u16 avg_vertical_ratio @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgStanceTimeBalance):
         {
             u16 avg_stance_time_balance @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgStepLength):
         {
             u16 avg_step_length @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgVam):
         {
             u16 avg_vam @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgDepth):
         {
             u32 avg_depth @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::MaxDepth):
         {
             u32 max_depth @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::MinTemperature):
         {
             s8 min_temperature @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::EnhancedAvgRespirationRate):
         {
             u16 enhanced_avg_respiration_rate @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::EnhancedMaxRespirationRate):
         {
             u16 enhanced_max_respiration_rate @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgRespirationRate):
         {
             u8 avg_respiration_rate @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::MaxRespirationRate):
         {
             u8 max_respiration_rate @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::TotalGrit):
         {
             float total_grit @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::TotalFlow):
         {
             float total_flow @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::JumpCount):
         {
             u16 jump_count @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgGrit):
         {
             float avg_grit @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgFlow):
         {
             float avg_flow @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::TotalFractionalAscent):
         {
             u8 total_fractional_ascent @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::TotalFractionalDescent):
         {
             u8 total_fractional_descent @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::AvgCoreTemperature):
         {
             u16 avg_core_temperature @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::MinCoreTemperature):
         {
             u16 min_core_temperature @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::MaxCoreTemperature):
         {
             u16 max_core_temperature @ p;
-            $ += s;
         }
         (LapFieldDefinitionType::Timestamp):
         {
-            be DateTime timestamp @ p[[format("format_datetime")]];
-            $ += s;
+            DateTime timestamp @ p[[format("format_datetime")]];
         }
         (LapFieldDefinitionType::MessageIndex):
         {
             MessageIndexType message_index @ p;
-            $ += s;
         }
     }
+    $ += s;
 };
 
 fn format_distance(u32 dist) 
@@ -3042,430 +2972,346 @@ struct RecordField
     auto i = std::core::array_index();
     auto s = scratch_defs[i].size;
     auto p = $;
-    std::core::set_endian(ArchToEndian(scratch_fix_header.architecture));
     match (scratch_defs[i].field_definition_num) 
     {
         (RecordFieldDefinitionType::PositionLat):
         {
             s32 position_lat @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::PositionLong):
         {
             s32 position_long @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::Altitude):
         {
             u16 altitude @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::HeartRate):
         {
             u8 heart_rate @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::Cadence):
         {
             u8 cadence @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::Distance):
         {
             u32 distance @ p [[format("format_distance")]];
-            $ += s;
         }
         (RecordFieldDefinitionType::Speed):
         {
             u16 speed @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::Power):
         {
             u16 power @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::CompressedSpeedDistance):
         {
             CompressedSpeedDistanceBitField compressed_speed_distance @ p [[bitfield_order(std::core::BitfieldOrder::MostToLeastSignificant, 12)]];;
-            $ += s;
         }
         (RecordFieldDefinitionType::Grade):
         {
             s16 grade @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::Resistance):
         {
             u8 resistance @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::TimeFromCourse):
         {
             s32 time_from_course @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::CycleLength):
         {
             u8 cycle_length @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::Temperature):
         {
             s8 temperature @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::Speed1s):
         {
             u8 speed_1s @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::Cycles):
         {
             u8 cycles @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::TotalCycles):
         {
             u32 total_cycles @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::CompressedAccumulatedPower):
         {
             u16 compressed_accumulated_power @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::AccumulatedPower):
         {
             u32 accumulated_power @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::LeftRightBalance):
         {
             LeftRightBalanceType left_right_balance @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::GpsAccuracy):
         {
             u8 gps_accuracy @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::VerticalSpeed):
         {
             s16 vertical_speed @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::Calories):
         {
             u16 calories @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::VerticalOscillation):
         {
             u16 vertical_oscillation @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::StanceTimePercent):
         {
             u16 stance_time_percent @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::StanceTime):
         {
             u16 stance_time @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::ActivityType):
         {
             ActivityType activity_type @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::LeftTorqueEffectiveness):
         {
             u8 left_torque_effectiveness @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::RightTorqueEffectiveness):
         {
             u8 right_torque_effectiveness @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::LeftPedalSmoothness):
         {
             u8 left_pedal_smoothness @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::RightPedalSmoothness):
         {
             u8 right_pedal_smoothness @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::CombinedPedalSmoothness):
         {
             u8 combined_pedal_smoothness @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::Time128):
         {
             u8 time128 @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::StrokeType):
         {
             StrokeType stroke_type @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::Zone):
         {
             u8 zone @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::BallSpeed):
         {
             u16 ball_speed @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::Cadence256):
         {
             u16 cadence256 @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::FractionalCadence):
         {
             u8 fractional_cadence @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::TotalHemoglobinConc):
         {
             u16 total_hemoglobin_conc @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::TotalHemoglobinConcMin):
         {
             u16 total_hemoglobin_conc_min @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::TotalHemoglobinConcMax):
         {
             u16 total_hemoglobin_conc_max @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::SaturatedHemoglobinPercent):
         {
             u16 saturated_hemoglobin_percent @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::SaturatedHemoglobinPercentMin):
         {
             u16 saturated_hemoglobin_percent_min @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::SaturatedHemoglobinPercentMax):
         {
             u16 saturated_hemoglobin_percent_max @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::DeviceIndex):
         {
             DeviceIndexType device_index @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::LeftPco):
         {
             s8 left_pco @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::RightPco):
         {
             s8 right_pco @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::LeftPowerPhase):
         {
             u8 left_power_phase @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::LeftPowerPhasePeak):
         {
             u8 left_power_phase_peak @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::RightPowerPhase):
         {
             u8 right_power_phase @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::RightPowerPhasePeak):
         {
             u8 right_power_phase_peak @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::EnhancedSpeed):
         {
             u32 enhanced_speed @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::EnhancedAltitude):
         {
             u32 enhanced_altitude @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::BatterySoc):
         {
             u8 battery_soc @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::MotorPower):
         {
             u16 motor_power @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::VerticalRatio):
         {
             u16 vertical_ratio @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::StanceTimeBalance):
         {
             u16 stance_time_balance @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::StepLength):
         {
             u16 step_length @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::CycleLength16):
         {
             u16 cycle_length16 @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::AbsolutePressure):
         {
             u32 absolute_pressure @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::Depth):
         {
             u32 depth @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::NextStopDepth):
         {
             u32 next_stop_depth @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::NextStopTime):
         {
             u32 next_stop_time @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::TimeToSurface):
         {
             u32 time_to_surface @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::NdlTime):
         {
             u32 ndl_time @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::CnsLoad):
         {
             u8 cns_load @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::N2Load):
         {
             u16 N2_load @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::RespirationRate):
         {
             u8 respiration_rate @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::EnhancedRespirationRate):
         {
             u16 enhanced_respiration_rate @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::Grit):
         {
             float grit @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::Flow):
         {
             float flow @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::CurrentStress):
         {
             u16 current_stress @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::EbikeTravelRange):
         {
             u16 ebike_travel_range @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::EbikeBatteryLevel):
         {
             u8 ebike_battery_level @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::EbikeAssistMode):
         {
             u8 ebike_assist_mode @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::EbikeAssistLevelPercent):
         {
             u8 ebike_assist_level_percent @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::AirTimeRemaining):
         {
             u32 air_time_remaining @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::PressureSac):
         {
             u16 pressure_sac @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::VolumeSac):
         {
             u16 volume_sac @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::Rmv):
         {
             u16 rmv @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::AscentRate):
         {
             s32 ascent_rate @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::Po2):
         {
             u8 po2 @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::CoreTemperature):
         {
             u16 core_temperature @ p;
-            $ += s;
         }
         (RecordFieldDefinitionType::Timestamp):
         {
             DateTime timestamp @ p[[format("format_datetime")]];
-            $ += s;
         }
     }
+    $ += s;
 };
 
 struct FileIdField 
@@ -3473,58 +3319,69 @@ struct FileIdField
     auto i = std::core::array_index();
     auto s = scratch_defs[i].size;
     auto p = $;
-    std::core::set_endian(ArchToEndian(scratch_fix_header.architecture));
-    match (scratch_defs[i].field_definition_num) 
+    u8 fdn = u8(scratch_defs[i].field_definition_num);
+    //std::print(std::format("FieldIdField: Index:{},Size:{},Pointer:{} FDN: {}", i, s, p, fdn));
+    match (fdn) 
     {
         (FileIdFieldDefinitionType::TimeCreated): {
-            DateTime time_created @ p [[format("format_local_datetime")]];
+            if(scratch_fix_header.architecture == Architecture::BigEndian){
+                be DateTime time_created @ p [[format("format_local_datetime")]];
+            }
+            else
+            {
+                le DateTime time_created @ p [[format("format_local_datetime")]];
+            }
             scratch_time_created = time_created;
-            $ += s;
         }
         (FileIdFieldDefinitionType::Type): {
             FileType type @ p;
-            $ += s;
         }
         (FileIdFieldDefinitionType::Manufacturer):
         {
             u16 manufacturer @ p;
-            $ += s;
         }
         (FileIdFieldDefinitionType::Product): 
         {
             u16 product @ p;
-            $ += s;
         }
         (FileIdFieldDefinitionType::SerialNumber): 
         {
-            be u32 serial_number @ p;
-            $ += s;
+            u32 serial_number @ p;
         }
         (FileIdFieldDefinitionType::Number): 
         {
             u16 number @ p;
-            $ += s;
         }
         (FileIdFieldDefinitionType::ProductName): 
         {
             str product_name @ p;
-            $ += s;
         }
     }
+    $ += s;
 };
 
 struct DataMessage
 {
     MsgNum subtype = scratch_fix_header.global_msg_num;
-    match(subtype)
+#ifdef DEBUG_MODE
+    try
     {
-        (MsgNum::FileId): FileIdField fields[scratch_fix_header.field_num];
-        (MsgNum::Activity): ActivityField fields[scratch_fix_header.field_num];
-        (MsgNum::Session): SessionField fields[scratch_fix_header.field_num];
-        (MsgNum::Lap): LapField fields[scratch_fix_header.field_num];
-        (MsgNum::Record): RecordField fields[scratch_fix_header.field_num];
-        (_): std::error(std::format("Invalid data message type code! MsgNum:{}", u16(subtype)));
+#endif
+        match(subtype)
+        {
+            (MsgNum::FileId): FileIdField fields[scratch_fix_header.field_num];
+            (MsgNum::Activity): ActivityField fields[scratch_fix_header.field_num];
+            (MsgNum::Session): SessionField fields[scratch_fix_header.field_num];
+            (MsgNum::Lap): LapField fields[scratch_fix_header.field_num];
+            (MsgNum::Record): RecordField fields[scratch_fix_header.field_num];
+            (_): std::error(std::format("Invalid data message type code! MsgNum:{}", u16(subtype)));
+        }
+#ifdef DEBUG_MODE
     }
+    catch{
+        break;
+    }
+#endif
 };
 
 struct Record
@@ -3564,9 +3421,13 @@ fn record_formatter(Record r)
 struct FitFile
 {
     Header header;
+#ifdef DEBUG_MODE
+    Record records[10] @ sizeof(Header);
+#endif
+#ifndef DEBUG_MODE
     Record records[while(!std::mem::reached(sizeof(Header) + header.data_size))] @ sizeof(Header);
-    std::core::set_endian(ArchToEndian(scratch_fix_header.architecture));
-    u16 CRC @ sizeof(Header) + header.data_size;
+#endif
+    le u16 CRC @ sizeof(Header) + header.data_size;
 };
 
 clearScratchFixedHeader();
@@ -3584,7 +3445,6 @@ fn ValidateFile(u8 header_size, u32 data_size)
     u8 data[size] @ 0x00 in crc_scratch;
     std::mem::copy_section_to_section(0, 0x00, crc_scratch, 0x00, size);
     
-    std::core::set_endian(ArchToEndian(scratch_fix_header.architecture));
     u16 crc = 0;
     crc = check_crc(crc, data, size);
     std::mem::delete_section(crc_scratch);
