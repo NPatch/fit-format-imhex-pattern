@@ -43,7 +43,7 @@ using EpochTime = u32;
 using DateTime = u32;
 using LocalDateTime = u32;
 //custom epoch required by Garmin (Sunday, December 31, 1989 at 12:00:00 AM)
-u32 epoch_offset = 631065600;
+le u32 epoch_offset = 631065600;
 
 u8 header_with_crc = 14;
 u8 header_without_crc = 12;
@@ -66,7 +66,7 @@ fn fit_base_type_formatter(u8 fbt)
         xiaomi_accounted_value += 0x80;
     }
     FitBaseTypeEnum fbte = xiaomi_accounted_value;
-    std::format("{}({})", std::string::to_string(fbte), fdt);
+    std::format("{}({})", std::string::to_string(fbte), fbt);
 };
 
 fn fit_base_type_formatter_2(auto fbt)
@@ -172,11 +172,13 @@ u32 defs_array_addr = fixed_header_addr + sizeof(FixedHeader);
 
 fn format_local_datetime(auto epoch) {
     std::time::EpochTime fixed = epoch + epoch_offset;
+    std::core::set_endian(std::mem::Endian::Little);
     return std::format("{} ({})", std::time::format(std::time::to_local(fixed)), fixed);
 };
 
 fn format_datetime(auto epoch) {
     std::time::EpochTime fixed = epoch + epoch_offset;
+    std::core::set_endian(std::mem::Endian::Little);
     return std::format("{} ({})", std::time::format(std::time::to_utc(fixed)), fixed);
 };
 
